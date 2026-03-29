@@ -10,7 +10,7 @@
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
-# Package Files #
+# Package Files
 *.jar
 *.war
 *.nar
@@ -19,6 +19,22 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# Virtual machine crash logs
 hs_err_pid*
 replay_pid*
+
+# Variables de entorno
+.env
+*.env
+
+# Gradle
+build/
+.gradle/
+app/build/
+
+# NetBeans
+.nb-gradle/
+nbproject/private/
+
+# Configuración local (se genera automáticamente)
+config.properties
