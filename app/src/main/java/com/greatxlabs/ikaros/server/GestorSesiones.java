@@ -10,8 +10,13 @@ import java.util.UUID;
  */
 public class GestorSesiones {
     
-    // Almacena los tokens activos vinculados a un Rol
+    // Almacena los tokens activos vinculados a un Rol (Token -> Rol)
     private static final Map<String, String> sesionesActivas = new HashMap<>();
+    private final AccesoDatos accesoDatos;
+
+    public GestorSesiones(AccesoDatos accesoDatos) {
+        this.accesoDatos = accesoDatos;
+    }
 
     /**
      * Valida las credenciales de un usuario y genera un token de sesión.
@@ -21,12 +26,17 @@ public class GestorSesiones {
      * @return El token generado y el rol si es exitoso (formato token|ROL), o null si falla.
      */
     public String iniciarSesion(String usuario, String clave) {
-        // Validación temporal hardcodeada
-        if (usuario.equals("admin") && clave.equals("1234")) {
-            String token = UUID.randomUUID().toString().substring(0, 8);
-            String rol = "JEFE";
-            sesionesActivas.put(token, rol);
-            return token + "|" + rol;
+        try (java.sql.ResultSet rs = accesoDatos.validarLogin(usuario, clave)) {
+            if (rs.next()) {
+                // Si el SP devuelve datos, el login es correcto
+                String token = UUID.randomUUID().toString().substring(0, 8);
+                String rol = rs.getString("NombreRol"); // Asumiendo que el SP devuelve el nombre del rol
+                
+                sesionesActivas.put(token, rol);
+                return token + "|" + rol;
+            }
+        } catch (java.sql.SQLException e) {
+            System.err.println("Error en validación de sesión: " + e.getMessage());
         }
         return null;
     }

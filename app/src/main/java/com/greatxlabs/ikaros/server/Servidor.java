@@ -7,14 +7,24 @@ public class Servidor {
     public static void main(String[] args) {
         int puerto = Configuracion.getPuerto();
         
-        // Instanciar los componentes del sistema
-        GestorSesiones gestorSesiones = new GestorSesiones();
-        Protocolo protocolo = new Protocolo(gestorSesiones);
+        // Instanciar componentes de datos
+        AccesoDatos accesoDatos = new AccesoDatos();
+        CacheMaestra cache = new CacheMaestra(accesoDatos);
+        
+        // Inicialización inicial
+        cache.cargarTodo();
+        
+        // Instanciar los componentes de lógica
+        GestorSesiones gestorSesiones = new GestorSesiones(accesoDatos);
+        Protocolo protocolo = new Protocolo(gestorSesiones, accesoDatos);
         
         System.out.println("Servidor Ikaros iniciado en puerto " + puerto);
         System.out.println("Esperando conexiones (Modo Secuencial)...");
 
         try (ServerSocket serverSocket = new ServerSocket(puerto)) {
+            // Gancho para cerrar la conexión limpiamente al apagar el servidor
+            Runtime.getRuntime().addShutdownHook(new Thread(ConexionBD::cerrarConexion));
+            
             while (true) {
                 // El servidor se detiene aquí hasta que llega un cliente
                 try (Socket cliente = serverSocket.accept()) {
@@ -43,6 +53,8 @@ public class Servidor {
             }
         } catch (IOException e) {
             System.err.println("Error crítico en el servidor: " + e.getMessage());
+        } finally {
+            ConexionBD.cerrarConexion();
         }
     }
 }

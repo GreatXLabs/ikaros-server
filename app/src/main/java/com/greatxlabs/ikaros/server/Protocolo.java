@@ -7,9 +7,11 @@ package com.greatxlabs.ikaros.server;
 public class Protocolo {
 
     private final GestorSesiones gestorSesiones;
+    private final AccesoDatos accesoDatos;
 
-    public Protocolo(GestorSesiones gestorSesiones) {
+    public Protocolo(GestorSesiones gestorSesiones, AccesoDatos accesoDatos) {
         this.gestorSesiones = gestorSesiones;
+        this.accesoDatos = accesoDatos;
     }
 
     /**
