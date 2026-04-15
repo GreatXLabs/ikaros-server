@@ -6,12 +6,34 @@ import java.util.UUID;
 
 /**
  * Gestiona la autenticación y validación de tokens de sesión para el sistema Ikaros.
- * Actualmente utiliza datos predefinidos (hardcoded) para pruebas iniciales.
+ * Implementa vencimiento por inactividad de 30 minutos.
  */
 public class GestorSesiones {
     
-    // Almacena los tokens activos vinculados a un Rol (Token -> Rol)
-    private static final Map<String, String> sesionesActivas = new HashMap<>();
+    /**
+     * Representa una sesión activa en el sistema con su tiempo de última actividad.
+     */
+    private static class Sesion {
+        String rol;
+        long ultimaActividad;
+
+        Sesion(String rol) {
+            this.rol = rol;
+            this.ultimaActividad = System.currentTimeMillis();
+        }
+
+        void renovar() {
+            this.ultimaActividad = System.currentTimeMillis();
+        }
+
+        boolean haExpirado() {
+            long treintaMinutosEnMillis = 30 * 60 * 1000;
+            return (System.currentTimeMillis() - ultimaActividad) > treintaMinutosEnMillis;
+        }
+    }
+
+    // Almacena los tokens activos vinculados a una Sesión
+    private static final Map<String, Sesion> sesionesActivas = new HashMap<>();
     private final AccesoDatos accesoDatos;
 
     public GestorSesiones(AccesoDatos accesoDatos) {
@@ -28,11 +50,10 @@ public class GestorSesiones {
     public String iniciarSesion(String usuario, String clave) {
         try (java.sql.ResultSet rs = accesoDatos.validarLogin(usuario, clave)) {
             if (rs.next()) {
-                // Si el SP devuelve datos, el login es correcto
                 String token = UUID.randomUUID().toString().substring(0, 8);
-                String rol = rs.getString("NombreRol"); // Asumiendo que el SP devuelve el nombre del rol
+                String rol = rs.getString("NombreRol");
                 
-                sesionesActivas.put(token, rol);
+                sesionesActivas.put(token, new Sesion(rol));
                 return token + "|" + rol;
             }
         } catch (java.sql.SQLException e) {
@@ -49,9 +70,16 @@ public class GestorSesiones {
      * @return true si tiene permiso, false en caso contrario.
      */
     public boolean tienePermiso(String token, String operacion) {
-        String rol = sesionesActivas.get(token);
-        if (rol == null) return false;
+        Sesion sesion = sesionesActivas.get(token);
+        if (sesion == null) return false;
 
+        // Si la sesión expiró, la eliminamos y denegamos el permiso
+        if (sesion.haExpirado()) {
+            sesionesActivas.remove(token);
+            return false;
+        }
+
+        String rol = sesion.rol;
         // El JEFE puede hacer todo
         if (rol.equals("JEFE")) return true;
 
@@ -87,19 +115,37 @@ public class GestorSesiones {
     }
 
     /**
-     * Verifica si un token es válido y está activo.
+     * Verifica si un token es válido, está activo y no ha expirado.
+     * Si es válido, renueva el tiempo de actividad.
+     * 
+     * @param token El token a verificar.
+     * @return true si la sesión es válida y está activa.
      */
     public boolean esSesionValida(String token) {
-        return sesionesActivas.containsKey(token);
+        Sesion sesion = sesionesActivas.get(token);
+        if (sesion == null) return false;
+
+        if (sesion.haExpirado()) {
+            sesionesActivas.remove(token);
+            return false;
+        }
+
+        // Renovación automática con cada uso exitoso
+        sesion.renovar();
+        return true;
     }
 
     /**
      * Obtiene el rol asociado a un token de sesión.
      * 
      * @param token El token del usuario.
-     * @return El nombre del Rol o null si no existe.
+     * @return El nombre del Rol o null si no existe o expiró.
      */
     public String obtenerRol(String token) {
-        return sesionesActivas.get(token);
+        Sesion sesion = sesionesActivas.get(token);
+        if (sesion != null && !sesion.haExpirado()) {
+            return sesion.rol;
+        }
+        return null;
     }
 }

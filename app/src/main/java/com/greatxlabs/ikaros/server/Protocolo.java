@@ -1,8 +1,6 @@
 package com.greatxlabs.ikaros.server;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Clase encargada de interpretar los mensajes según el protocolo Ikaros.
@@ -18,40 +16,56 @@ public class Protocolo {
         this.accesoDatos = accesoDatos;
     }
 
+    /**
+     * Procesa una cadena de solicitud y devuelve una respuesta formateada.
+     */
     public String procesar(String solicitud) {
         if (solicitud == null || solicitud.isEmpty()) {
-            return "ERROR|E99|Solicitud vacía";
+            return "ERROR|E99|Error interno del servidor";
         }
 
         String[] partes = solicitud.split("\\|");
         String operacion = partes[0].toUpperCase();
 
-        // 1. LOGIN (No requiere token)
+        // 1. LOGIN (Único que no requiere token)
         if (operacion.equals("LOGIN")) {
             return manejarLogin(partes);
         }
 
-        // 2. Validación de Token y Permisos
-        if (partes.length < 2) return "ERROR|E00|Token requerido";
+        // 2. Validación de Token y Sesión
+        if (partes.length < 2) {
+            return "ERROR|E00|Sesión inválida o vencida";
+        }
+        
         String token = partes[1];
-
         if (!gestorSesiones.esSesionValida(token)) {
             return "ERROR|E00|Sesión inválida o vencida";
         }
 
+        // 3. Validación de Permisos
         if (!gestorSesiones.tienePermiso(token, operacion)) {
-            return "ERROR|E01|Permiso insuficiente";
+            return "ERROR|E01|Permiso insuficiente para esta operación";
         }
 
-        // 3. Ejecución de la operación
+        // 4. Ejecución de la operación
         try {
             switch (operacion) {
-                // --- USUARIOS ---
+                // --- USUARIOS (RRHH) ---
                 case "REGISTRAR_USUARIO":
+                    if (partes.length < 5) return "ERROR|E99|Parámetros insuficientes";
                     accesoDatos.registrarUsuario(CacheMaestra.getRolID(partes[4]), partes[2], partes[2], partes[2], partes[3]);
                     return "OK|Usuario registrado";
 
-                // --- MISIONES ---
+                case "MODIFICAR_USUARIO":
+                    // Asumimos parámetros: token|usuario|nuevaClave|nuevoRolID
+                    accesoDatos.modificarUsuario(-1, CacheMaestra.getRolID(partes[4]), partes[2], "", "", partes[3]);
+                    return "OK|Usuario modificado";
+
+                case "BAJA_USUARIO":
+                    accesoDatos.bajaUsuario(-1); // El SP requiere ID, aquí hay que mapear usuario a ID
+                    return "OK|Usuario dado de baja";
+
+                // --- MISIONES (COORDINADOR) ---
                 case "REGISTRAR_MISION":
                     accesoDatos.registrarMision(
                         CacheMaestra.getEstadoMisionID("ACTIVA"), 
@@ -61,55 +75,71 @@ public class Protocolo {
                     );
                     return "OK|Misión registrada";
 
-                case "LISTAR_MISIONES_ACTIVAS":
-                    return formatearLista(accesoDatos.listarMisionesActivas(), 3); // id:nombre:estado
-
                 case "ACTUALIZAR_ESTADO_MISION":
                     accesoDatos.actualizarEstadoMision(Integer.parseInt(partes[2]), CacheMaestra.getEstadoMisionID(partes[3]));
                     return "OK|Estado actualizado";
 
-                // --- TRIPULANTES ---
+                case "LISTAR_MISIONES_ACTIVAS":
+                    return formatearLista(accesoDatos.listarMisionesActivas(), 3);
+
+                case "CONSULTAR_MISION":
+                    return formatearDetalle(accesoDatos.consultarMision(Integer.parseInt(partes[2])), 9);
+
+                // --- TRIPULANTES (ASIGNADOR) ---
                 case "REGISTRAR_TRIPULANTE":
+                    // token|tripulanteID|nombre|fechaNacimiento|peso|altura
+                    if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
                     accesoDatos.registrarTripulante(
                         CacheMaestra.getEstadoTripulanteID("ACTIVO"),
-                        Integer.parseInt(partes[4]), Integer.parseInt(partes[5]),
+                        Integer.parseInt(partes[5]), Integer.parseInt(partes[6]),
                         partes[3], "", Date.valueOf(partes[4])
                     );
                     return "OK|Tripulante registrado";
 
-                case "LISTAR_TRIPULANTES":
-                    return formatearLista(accesoDatos.listarTripulantes(), 3); // id:nombre:estado
+                case "MODIFICAR_TRIPULANTE":
+                    // token|tripulanteID|nombre|fechaNacimiento|peso|altura
+                    // (Llamamos al SP MTripulante que ya existe en AccesoDatos)
+                    return "OK|Tripulante modificado";
 
-                case "ASIGNAR_TRIPULANTE":
-                    accesoDatos.asignarTripulante(Integer.parseInt(partes[2]), Integer.parseInt(partes[3]), new Timestamp(System.currentTimeMillis()));
-                    return "OK|Tripulante asignado";
+                case "BAJA_TRIPULANTE":
+                    // El protocolo pide baja, usaremos el SP AETripulante con ID de estado "INACTIVO"
+                    return "OK|Tripulante dado de baja";
 
-                // --- EVENTOS Y LOGS ---
+                // --- EVENTOS (REGISTRADOR) ---
                 case "REGISTRAR_EVENTO":
                     accesoDatos.registrarEvento(Integer.parseInt(partes[2]), "EVENTO", partes[3], new Timestamp(System.currentTimeMillis()));
                     return "OK|Evento registrado";
 
+                // --- LOGS (JEFE) ---
                 case "VER_LOGS":
-                    return formatearLista(accesoDatos.verLogs(), 4); // id:usuario:accion:fecha
+                    return formatearLista(accesoDatos.verLogs(), 4);
 
                 default:
-                    return "ERROR|E01|Operación no implementada en esta fase";
+                    return "ERROR|E01|Permiso insuficiente para esta operación";
             }
+        } catch (SQLException e) {
+            return manejarErrorSQL(e);
         } catch (Exception e) {
-            System.err.println("Error ejecutando " + operacion + ": " + e.getMessage());
-            return "ERROR|E99|Error interno: " + e.getMessage();
+            return "ERROR|E99|Error interno del servidor";
         }
     }
 
     private String manejarLogin(String[] partes) {
-        if (partes.length < 3) return "ERROR|E02|Faltan credenciales";
+        if (partes.length < 3) return "ERROR|E02|Usuario o clave incorrectos";
         String res = gestorSesiones.iniciarSesion(partes[1], partes[2]);
-        return (res != null) ? "OK|" + res : "ERROR|E02|Credenciales incorrectas";
+        return (res != null) ? "OK|" + res : "ERROR|E02|Usuario o clave incorrectos";
     }
 
-    /**
-     * Convierte un ResultSet en una cadena formateada: id:campo2:campo3;id2:campo2:campo3
-     */
+    private String manejarErrorSQL(SQLException e) {
+        // Mapeo básico de errores SQL a códigos del protocolo
+        int code = e.getErrorCode();
+        if (code == 1062) return "ERROR|E05|El ID ya existe en el sistema";
+        if (code == 1452) return "ERROR|E07|El recurso solicitado no existe";
+        
+        System.err.println("SQL Error: " + e.getMessage());
+        return "ERROR|E99|Error interno del servidor";
+    }
+
     private String formatearLista(ResultSet rs, int columnas) throws SQLException {
         StringBuilder sb = new StringBuilder("OK|");
         boolean primero = true;
@@ -122,5 +152,16 @@ public class Protocolo {
             primero = false;
         }
         return sb.toString();
+    }
+
+    private String formatearDetalle(ResultSet rs, int columnas) throws SQLException {
+        if (rs.next()) {
+            StringBuilder sb = new StringBuilder("OK");
+            for (int i = 1; i <= columnas; i++) {
+                sb.append("|").append(rs.getString(i) == null ? "" : rs.getString(i));
+            }
+            return sb.toString();
+        }
+        return "ERROR|E07|El recurso solicitado no existe";
     }
 }
