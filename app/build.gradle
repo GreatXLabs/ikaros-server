@@ -23,6 +23,9 @@ dependencies {
 
     // This dependency is used by the application.
     implementation libs.guava
+    
+    // MariaDB JDBC driver
+    implementation libs.mariadb.java.client
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

@@ -28,6 +28,9 @@ public class Configuracion {
         Properties defaults = new Properties();
         defaults.setProperty("server.port", "9000");
         defaults.setProperty("server.max_clients", "10");
+        defaults.setProperty("db.url", "jdbc:mariadb://localhost:3306/ikaros");
+        defaults.setProperty("db.user", "root");
+        defaults.setProperty("db.password", "admin123");
 
         try (OutputStream output = new FileOutputStream(archivo)) {
             defaults.store(output, "Configuracion por defecto - generada automaticamente");
@@ -44,5 +47,18 @@ public class Configuracion {
 
     public static int getMaxClientes() {
         return Integer.parseInt(props.getProperty("server.max_clients", "10"));
+    }
+
+    public static String getDbUrl() {
+        return props.getProperty("db.url");
+    }
+
+    public static String getDbUser() {
+        return props.getProperty("db.user");
+    }
+
+    public static String getDbPassword() {
+        return props.getProperty("db.password");
+    }
     }
 }
