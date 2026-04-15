@@ -60,5 +60,4 @@ public class Configuracion {
     public static String getDbPassword() {
         return props.getProperty("db.password");
     }
-    }
 }

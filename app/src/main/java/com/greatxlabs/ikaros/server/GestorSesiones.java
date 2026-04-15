@@ -42,10 +42,52 @@ public class GestorSesiones {
     }
 
     /**
-     * Verifica si un token es válido y está activo.
+     * Verifica si un rol tiene permiso para ejecutar una operación.
      * 
-     * @param token El token a verificar.
-     * @return true si el token existe, false en caso contrario.
+     * @param token El token del usuario.
+     * @param operacion El nombre de la operación (ej: REGISTRAR_MISION).
+     * @return true si tiene permiso, false en caso contrario.
+     */
+    public boolean tienePermiso(String token, String operacion) {
+        String rol = sesionesActivas.get(token);
+        if (rol == null) return false;
+
+        // El JEFE puede hacer todo
+        if (rol.equals("JEFE")) return true;
+
+        switch (rol) {
+            case "RRHH":
+                return operacion.equals("REGISTRAR_USUARIO") || 
+                       operacion.equals("MODIFICAR_USUARIO") || 
+                       operacion.equals("BAJA_USUARIO");
+            
+            case "COORDINADOR":
+                return operacion.equals("REGISTRAR_MISION") || 
+                       operacion.equals("MODIFICAR_MISION") || 
+                       operacion.equals("ACTUALIZAR_ESTADO_MISION") || 
+                       operacion.equals("LISTAR_MISIONES_ACTIVAS") || 
+                       operacion.equals("CONSULTAR_MISION");
+
+            case "ASIGNADOR":
+                return operacion.equals("REGISTRAR_TRIPULANTE") || 
+                       operacion.equals("MODIFICAR_TRIPULANTE") || 
+                       operacion.equals("BAJA_TRIPULANTE") || 
+                       operacion.equals("ASIGNAR_TRIPULANTE") || 
+                       operacion.equals("LISTAR_TRIPULANTES") || 
+                       operacion.equals("CONSULTAR_TRIPULANTE");
+
+            case "REGISTRADOR":
+                return operacion.equals("REGISTRAR_EVENTO") || 
+                       operacion.equals("BAJA_EVENTO") || 
+                       operacion.equals("CONSULTAR_EVENTOS");
+            
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Verifica si un token es válido y está activo.
      */
     public boolean esSesionValida(String token) {
         return sesionesActivas.containsKey(token);
