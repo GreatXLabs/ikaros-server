@@ -29,6 +29,22 @@ public class Protocolo {
 		}
 
 		String token = partes[1];
+
+		// REGISTRAR_LOG no requiere sesion valida (el gateway maneja la autenticacion)
+		if (operacion.equals("REGISTRAR_LOG")) {
+			try {
+				if (partes.length < 6) return "ERROR|E99|Parametros insuficientes";
+				int usuarioID = Integer.parseInt(partes[2]);
+				int accionID = Integer.parseInt(partes[3]);
+				int tipoEntidadID = Integer.parseInt(partes[4]);
+				int entidadID = Integer.parseInt(partes[5]);
+				accesoDatos.registrarLog(usuarioID, accionID, tipoEntidadID, entidadID);
+				return "OK|Log registrado";
+			} catch (Exception e) {
+				return "ERROR|E99|Error interno del servidor: " + e.getMessage();
+			}
+		}
+
 		if (!gestorSesiones.esSesionValida(token)) {
 			return "ERROR|E00|Sesión inválida o vencida";
 		}
@@ -43,19 +59,11 @@ public class Protocolo {
 			case "CONSULTAR_ROLES":
 				return formatearLista(accesoDatos.consultarRoles(), 2);
 
-			// --- REGISTROS (LOGS) ---
-			case "REGISTRAR_LOG": {
-				if (partes.length < 6) return "ERROR|E99|Parámetros insuficientes";
-				int usuarioID = Integer.parseInt(partes[2]);
-				int accionID = Integer.parseInt(partes[3]);
-				int tipoEntidadID = Integer.parseInt(partes[4]);
-				int entidadID = Integer.parseInt(partes[5]);
-				accesoDatos.registrarLog(usuarioID, accionID, tipoEntidadID, entidadID);
-				return "OK|Log registrado";
-			}
+			// --- APTITUDES ---
+			case "CONSULTAR_APTITUDES":
+				return formatearLista(accesoDatos.consultarAptitudes(), 2);
 
-			// --- USUARIOS (RRHH) ---
-			// REGISTRAR_USUARIO|token|usuario|clave|nombre|apellido|rol
+			// --- REGISTROS (LOGS) ---
 			case "REGISTRAR_USUARIO": {
 				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
 				accesoDatos.registrarUsuario(
@@ -69,9 +77,10 @@ public class Protocolo {
 			case "MODIFICAR_USUARIO": {
 				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
 				int usuarioID = accesoDatos.obtenerUsuarioID(partes[2]);
+				String clave = partes[3].isEmpty() ? accesoDatos.obtenerClaveUsuario(usuarioID) : partes[3];
 				accesoDatos.modificarUsuario(
 					usuarioID, CacheMaestra.getRolID(partes[6]),
-					partes[2], partes[4], partes[5], partes[3]
+					partes[2], partes[4], partes[5], clave
 				);
 				return "OK|Usuario modificado";
 			}
@@ -82,7 +91,7 @@ public class Protocolo {
 				return "OK|Usuario dado de baja";
 
 			case "LISTAR_USUARIOS":
-				return formatearLista(accesoDatos.listarUsuarios(), 5);
+				return formatearLista(accesoDatos.listarUsuarios(), 7);
 
 			// --- MISIONES (COORDINADOR) ---
 			case "REGISTRAR_MISION":
@@ -90,8 +99,8 @@ public class Protocolo {
 				accesoDatos.registrarMision(
 					CacheMaestra.getEstadoMisionID("PLANIFICADA"),
 					partes[3], partes[4],
-					Timestamp.valueOf(partes[5] + " 00:00:00"),
-					Timestamp.valueOf(partes[6] + " 00:00:00")
+					parseTimestamp(partes[5]),
+					parseTimestamp(partes[6])
 				);
 				return "OK|Misión registrada";
 
@@ -101,8 +110,8 @@ public class Protocolo {
 					Integer.parseInt(partes[2]),
 					CacheMaestra.getEstadoMisionID(partes[3]),
 					partes[4], partes[5],
-					Timestamp.valueOf(partes[6] + " 00:00:00"),
-					Timestamp.valueOf(partes[7] + " 00:00:00")
+					parseTimestamp(partes[6]),
+					parseTimestamp(partes[7])
 				);
 				return "OK|Misión modificada";
 
@@ -119,20 +128,20 @@ public class Protocolo {
 
 			// --- TRIPULANTES (ASIGNADOR) ---
 			case "REGISTRAR_TRIPULANTE":
-				if (partes.length < 8) return "ERROR|E99|Parámetros insuficientes";
+				if (partes.length < 9) return "ERROR|E99|Parámetros insuficientes";
 				accesoDatos.registrarTripulante(
 					CacheMaestra.getEstadoTripulanteID("ACTIVO"),
-					obtenerSexoID(partes[3]),
+					obtenerSexoID(partes[2]),
+					Integer.parseInt(partes[4]),
 					Integer.parseInt(partes[5]),
-					Integer.parseInt(partes[6]),
-					partes[7], partes[8],
-					"",
-					Date.valueOf(partes[4])
+					partes[6], partes[7],
+					partes[8],
+					Date.valueOf(partes[3])
 				);
 				return "OK|Tripulante registrado";
 
 			case "MODIFICAR_TRIPULANTE":
-				if (partes.length < 9) return "ERROR|E99|Parámetros insuficientes";
+				if (partes.length < 11) return "ERROR|E99|Parámetros insuficientes";
 				accesoDatos.modificarTripulante(
 					Integer.parseInt(partes[2]),
 					CacheMaestra.getEstadoTripulanteID(partes[3]),
@@ -140,7 +149,7 @@ public class Protocolo {
 					Integer.parseInt(partes[6]),
 					Integer.parseInt(partes[7]),
 					partes[8], partes[9],
-					"",
+					partes[10],
 					Date.valueOf(partes[5])
 				);
 				return "OK|Tripulante modificado";
@@ -156,7 +165,11 @@ public class Protocolo {
 				return "OK|Tripulante asignado a misión";
 
 			case "LISTAR_TRIPULANTES":
-				return formatearLista(accesoDatos.listarTripulantes(), 4);
+				return formatearLista(accesoDatos.listarTripulantes(), 5);
+
+			case "CONSULTAR_TRIPULANTE":
+				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+				return formatearDetalle(accesoDatos.consultarTripulante(Integer.parseInt(partes[2])), 9);
 
 			// --- EVENTOS (REGISTRADOR) ---
 			case "REGISTRAR_EVENTO":
@@ -230,5 +243,12 @@ public class Protocolo {
 			return sb.toString();
 		}
 		return "ERROR|E07|El recurso solicitado no existe";
+	}
+
+	private Timestamp parseTimestamp(String value) {
+		String datetime = value.replace("T", " ");
+		if (!datetime.contains(":")) datetime += " 00:00:00";
+		else if (datetime.split(":").length == 2) datetime += ":00";
+		return Timestamp.valueOf(datetime);
 	}
 }

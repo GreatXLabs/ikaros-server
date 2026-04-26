@@ -48,6 +48,12 @@ public class AccesoDatos {
 		return cs.executeQuery();
 	}
 
+	public ResultSet consultarAptitudes() throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ListarAptitudes()}");
+		return cs.executeQuery();
+	}
+
 	// --- REGISTROS (LOGS) ---
 	public void registrarLog(int usuarioID, int accionID, int tipoEntidadID, int entidadID) throws SQLException {
 		Connection con = ConexionBD.getConexion();
@@ -103,11 +109,17 @@ public class AccesoDatos {
 
 	public ResultSet listarUsuarios() throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		PreparedStatement ps = con.prepareStatement(
-			"SELECT U.UsuarioID, U.Usuario, U.Nombre, U.Apellido, R.Rol AS NombreRol " +
-			"FROM Usuarios U INNER JOIN Roles R ON U.RolID = R.RolID"
-		);
-		return ps.executeQuery();
+		CallableStatement cs = con.prepareCall("{CALL ListarUsuarios()}");
+		return cs.executeQuery();
+	}
+
+	public String obtenerClaveUsuario(int usuarioID) throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		PreparedStatement ps = con.prepareStatement("SELECT Clave FROM Usuarios WHERE UsuarioID = ?");
+		ps.setInt(1, usuarioID);
+		ResultSet rs = ps.executeQuery();
+		if (rs.next()) return rs.getString("Clave");
+		return "";
 	}
 
 	// --- MISIONES ---
@@ -177,7 +189,7 @@ public class AccesoDatos {
 
 	public void modificarTripulante(int tripulanteID, int estadoTID, int sexoID, int peso, int altura, String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL MTripulante(?, ?, ?, ?, ?, ?, ?, ?)}");
+		CallableStatement cs = con.prepareCall("{CALL MTripulante(?, ?, ?, ?, ?, ?, ?, ?, ?)}");
 		cs.setInt(1, tripulanteID);
 		cs.setInt(2, estadoTID);
 		cs.setInt(3, sexoID);
@@ -210,6 +222,17 @@ public class AccesoDatos {
 
 	public ResultSet listarTripulantes() throws SQLException {
 		return ConexionBD.getConexion().prepareCall("{CALL ListarTripulantes()}").executeQuery();
+	}
+
+	public ResultSet consultarTripulante(int tripulanteID) throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		PreparedStatement ps = con.prepareStatement(
+			"SELECT T.TripulanteID, T.Nombre, T.Apellido, T.Imagen, E.Estado, T.SexoID, T.FechaDeNacimiento, T.Peso, T.Altura " +
+			"FROM Tripulantes T INNER JOIN EstadosTripulantes E ON T.EstadoTID = E.EstadoTID " +
+			"WHERE T.TripulanteID = ?"
+		);
+		ps.setInt(1, tripulanteID);
+		return ps.executeQuery();
 	}
 
 	// --- EVENTOS Y LOGS ---

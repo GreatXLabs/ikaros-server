@@ -92,7 +92,8 @@ public class GestorSesiones {
 				operacion.equals("BAJA_TRIPULANTE") ||
 				operacion.equals("ASIGNAR_TRIPULANTE") ||
 				operacion.equals("LISTAR_TRIPULANTES") ||
-				operacion.equals("CONSULTAR_TRIPULANTE");
+				operacion.equals("CONSULTAR_TRIPULANTE") ||
+					operacion.equals("CONSULTAR_APTITUDES");
 
 		case "REGISTRADOR":
 			return operacion.equals("REGISTRAR_EVENTO") ||
