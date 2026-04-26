@@ -10,11 +10,13 @@ import java.util.Map;
  * Se carga una sola vez al iniciar el servidor para optimizar el rendimiento.
  */
 public class CacheMaestra {
-    
+
     private static final Map<String, Integer> roles = new HashMap<>();
     private static final Map<String, Integer> estadosMision = new HashMap<>();
     private static final Map<String, Integer> estadosTripulante = new HashMap<>();
-    
+    private static final Map<String, Integer> estadosEvento = new HashMap<>();
+    private static final Map<String, Integer> aptitudes = new HashMap<>();
+
     private final AccesoDatos accesoDatos;
 
     public CacheMaestra(AccesoDatos accesoDatos) {
@@ -30,10 +32,11 @@ public class CacheMaestra {
             cargarMapa(roles, "Roles");
             cargarMapa(estadosMision, "EstadosMisiones");
             cargarMapa(estadosTripulante, "EstadosTripulantes");
+            cargarMapa(estadosEvento, "EstadosEventos");
+            cargarMapa(aptitudes, "Aptitudes");
             System.out.println("Carga de caché finalizada con éxito.");
         } catch (SQLException e) {
             System.err.println("Error cargando caché inicial: " + e.getMessage());
-            // En un entorno profesional, esto podría detener el servidor si los datos son críticos.
         }
     }
 
@@ -55,5 +58,13 @@ public class CacheMaestra {
 
     public static Integer getEstadoTripulanteID(String nombre) {
         return estadosTripulante.get(nombre.toUpperCase());
+    }
+
+    public static Integer getEstadoEventoID(String nombre) {
+        return estadosEvento.get(nombre.toUpperCase());
+    }
+
+    public static Integer getAptitudID(String nombre) {
+        return aptitudes.get(nombre.toUpperCase());
     }
 }

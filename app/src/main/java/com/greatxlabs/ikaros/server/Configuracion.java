@@ -28,7 +28,9 @@ public class Configuracion {
         Properties defaults = new Properties();
         defaults.setProperty("server.port", "9000");
         defaults.setProperty("server.max_clients", "10");
-        defaults.setProperty("db.url", "jdbc:mariadb://localhost:3306/ikaros");
+        defaults.setProperty("db.host", "localhost");
+        defaults.setProperty("db.port", "3306");
+        defaults.setProperty("db.name", "ikaros");
         defaults.setProperty("db.user", "root");
         defaults.setProperty("db.password", "admin123");
 
@@ -49,15 +51,30 @@ public class Configuracion {
         return Integer.parseInt(props.getProperty("server.max_clients", "10"));
     }
 
+    public static String getDbHost() {
+        return props.getProperty("db.host", "localhost");
+    }
+
+    public static int getDbPort() {
+        return Integer.parseInt(props.getProperty("db.port", "3306"));
+    }
+
+    public static String getDbName() {
+        return props.getProperty("db.name", "ikaros");
+    }
+
     public static String getDbUrl() {
-        return props.getProperty("db.url");
+        String host = getDbHost();
+        int port = getDbPort();
+        String name = getDbName();
+        return "jdbc:mariadb://" + host + ":" + port + "/" + name;
     }
 
     public static String getDbUser() {
-        return props.getProperty("db.user");
+        return props.getProperty("db.user", "root");
     }
 
     public static String getDbPassword() {
-        return props.getProperty("db.password");
+        return props.getProperty("db.password", "admin123");
     }
 }
