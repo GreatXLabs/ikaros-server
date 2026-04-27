@@ -17,7 +17,7 @@ public class Protocolo {
 			return "ERROR|E99|Error interno del servidor";
 		}
 
-		String[] partes = solicitud.split("\\|");
+		String[] partes = solicitud.split("\\|", -1);
 		String operacion = partes[0].toUpperCase();
 
 		if (operacion.equals("LOGIN")) {
