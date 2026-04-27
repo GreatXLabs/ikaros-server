@@ -217,6 +217,13 @@ public class AccesoDatos {
 		return ConexionBD.getConexion().prepareCall("{CALL ListarTripulantes()}").executeQuery();
 	}
 
+	public ResultSet listarMisionesTripulante(int tripulanteID) throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ListarMisionesTripulante(?)}");
+		cs.setInt(1, tripulanteID);
+		return cs.executeQuery();
+	}
+
 	public ResultSet consultarTripulante(int tripulanteID) throws SQLException {
 		Connection con = ConexionBD.getConexion();
 		CallableStatement cs = con.prepareCall("{CALL ConsultarTripulante(?)}");

@@ -165,11 +165,15 @@ public class Protocolo {
 				return "OK|Tripulante asignado a misión";
 
 			case "LISTAR_TRIPULANTES":
-				return formatearLista(accesoDatos.listarTripulantes(), 5);
+				return formatearLista(accesoDatos.listarTripulantes(), 8);
 
 			case "CONSULTAR_TRIPULANTE":
 				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
 				return formatearDetalle(accesoDatos.consultarTripulante(Integer.parseInt(partes[2])), 9);
+
+			case "LISTAR_MISIONES_TRIPULANTE":
+				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+				return formatearLista(accesoDatos.listarMisionesTripulante(Integer.parseInt(partes[2])), 4);
 
 			// --- EVENTOS (REGISTRADOR) ---
 			case "REGISTRAR_EVENTO":
