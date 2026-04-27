@@ -17,29 +17,11 @@ public class AccesoDatos {
 
 	public ResultSet obtenerDatosUsuario(String usuario) throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		PreparedStatement ps = con.prepareStatement(
-			"SELECT U.UsuarioID, U.Usuario, U.Nombre, U.Apellido, U.Clave, R.Rol AS NombreRol " +
-			"FROM Usuarios U INNER JOIN Roles R ON U.RolID = R.RolID " +
-			"WHERE U.Usuario = ?"
-		);
-		ps.setString(1, usuario);
-		return ps.executeQuery();
+		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
+		cs.setString(1, usuario);
+		return cs.executeQuery();
 	}
 
-	public ResultSet obtenerTablaMaestra(String tipoTabla) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		String tabla;
-		switch (tipoTabla) {
-		case "Roles": tabla = "Roles"; break;
-		case "EstadosMisiones": tabla = "EstadosMisiones"; break;
-		case "EstadosTripulantes": tabla = "EstadosTripulantes"; break;
-		case "EstadosEventos": tabla = "EstadosEventos"; break;
-		case "Aptitudes": tabla = "Aptitudes"; break;
-		default: throw new SQLException("Tabla maestra desconocida: " + tipoTabla);
-		}
-		PreparedStatement ps = con.prepareStatement("SELECT * FROM " + tabla);
-		return ps.executeQuery();
-	}
 
 	// --- ROLES ---
 	public ResultSet consultarRoles() throws SQLException {
@@ -51,6 +33,24 @@ public class AccesoDatos {
 	public ResultSet consultarAptitudes() throws SQLException {
 		Connection con = ConexionBD.getConexion();
 		CallableStatement cs = con.prepareCall("{CALL ListarAptitudes()}");
+		return cs.executeQuery();
+	}
+
+	public ResultSet listarEstadosMision() throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ListarEstadosMisiones()}");
+		return cs.executeQuery();
+	}
+
+	public ResultSet listarEstadosTripulante() throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ListarEstadosTripulantes()}");
+		return cs.executeQuery();
+	}
+
+	public ResultSet listarEstadosEvento() throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ListarEstadosEventos()}");
 		return cs.executeQuery();
 	}
 
@@ -68,9 +68,9 @@ public class AccesoDatos {
 
 	public int obtenerUsuarioID(String usuario) throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		PreparedStatement ps = con.prepareStatement("SELECT UsuarioID FROM Usuarios WHERE Usuario = ?");
-		ps.setString(1, usuario);
-		ResultSet rs = ps.executeQuery();
+		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
+		cs.setString(1, usuario);
+		ResultSet rs = cs.executeQuery();
 		if (rs.next()) return rs.getInt("UsuarioID");
 		throw new SQLException("Usuario no encontrado: " + usuario);
 	}
@@ -102,9 +102,9 @@ public class AccesoDatos {
 	public void bajaUsuario(String nombreUsuario) throws SQLException {
 		int usuarioID = obtenerUsuarioID(nombreUsuario);
 		Connection con = ConexionBD.getConexion();
-		PreparedStatement ps = con.prepareStatement("DELETE FROM Usuarios WHERE UsuarioID = ?");
-		ps.setInt(1, usuarioID);
-		ps.execute();
+		CallableStatement cs = con.prepareCall("{CALL BUsuario(?)}");
+		cs.setInt(1, usuarioID);
+		cs.execute();
 	}
 
 	public ResultSet listarUsuarios() throws SQLException {
@@ -115,9 +115,9 @@ public class AccesoDatos {
 
 	public String obtenerClaveUsuario(int usuarioID) throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		PreparedStatement ps = con.prepareStatement("SELECT Clave FROM Usuarios WHERE UsuarioID = ?");
-		ps.setInt(1, usuarioID);
-		ResultSet rs = ps.executeQuery();
+		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
+		cs.setInt(1, usuarioID);
+		ResultSet rs = cs.executeQuery();
 		if (rs.next()) return rs.getString("Clave");
 		return "";
 	}
@@ -148,21 +148,16 @@ public class AccesoDatos {
 
 	public void actualizarEstadoMision(int id, int estadoID) throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		PreparedStatement ps = con.prepareStatement("UPDATE Misiones SET EstadoMID = ? WHERE MisionID = ?");
-		ps.setInt(1, estadoID);
-		ps.setInt(2, id);
-		ps.execute();
+		CallableStatement cs = con.prepareCall("{CALL ActualizarEstadoMision(?, ?)}");
+		cs.setInt(1, id);
+		cs.setInt(2, estadoID);
+		cs.execute();
 	}
 
 	public ResultSet listarMisionesActivas() throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		PreparedStatement ps = con.prepareStatement(
-			"SELECT M.MisionID, M.Nombre, E.Estado " +
-			"FROM Misiones M INNER JOIN EstadosMisiones E ON M.EstadoMID = E.EstadoMID " +
-			"WHERE M.EstadoMID NOT IN (4, 5) " +
-			"ORDER BY M.MisionID"
-		);
-		return ps.executeQuery();
+		CallableStatement cs = con.prepareCall("{CALL ListarMisionesActivas()}");
+		return cs.executeQuery();
 	}
 
 	public ResultSet consultarMision(int id) throws SQLException {
@@ -204,11 +199,9 @@ public class AccesoDatos {
 
 	public void bajaTripulante(int tripulanteID) throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		PreparedStatement ps = con.prepareStatement(
-			"UPDATE Tripulantes SET EstadoTID = 2 WHERE TripulanteID = ?"
-		);
-		ps.setInt(1, tripulanteID);
-		ps.execute();
+		CallableStatement cs = con.prepareCall("{CALL BTripulante(?)}");
+		cs.setInt(1, tripulanteID);
+		cs.execute();
 	}
 
 	public void asignarTripulante(int tripID, int misID, Timestamp fecha) throws SQLException {
@@ -226,13 +219,9 @@ public class AccesoDatos {
 
 	public ResultSet consultarTripulante(int tripulanteID) throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		PreparedStatement ps = con.prepareStatement(
-			"SELECT T.TripulanteID, T.Nombre, T.Apellido, T.Imagen, E.Estado, T.SexoID, T.FechaDeNacimiento, T.Peso, T.Altura " +
-			"FROM Tripulantes T INNER JOIN EstadosTripulantes E ON T.EstadoTID = E.EstadoTID " +
-			"WHERE T.TripulanteID = ?"
-		);
-		ps.setInt(1, tripulanteID);
-		return ps.executeQuery();
+		CallableStatement cs = con.prepareCall("{CALL ConsultarTripulante(?)}");
+		cs.setInt(1, tripulanteID);
+		return cs.executeQuery();
 	}
 
 	// --- EVENTOS Y LOGS ---
@@ -263,15 +252,7 @@ public class AccesoDatos {
 
 	public ResultSet verLogs() throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		PreparedStatement ps = con.prepareStatement(
-			"SELECT R.RegistroID, U.Usuario, R2.Rol, A.Accion, E.TipoEntidad, R.EntidadID, R.FechaHora " +
-			"FROM Registros R " +
-			"INNER JOIN Usuarios U ON R.UsuarioID = U.UsuarioID " +
-			"INNER JOIN Roles R2 ON U.RolID = R2.RolID " +
-			"INNER JOIN Acciones A ON R.AccionID = A.AccionID " +
-			"INNER JOIN Entidades E ON R.TipoEntidadID = E.TipoEntidadID " +
-			"ORDER BY R.FechaHora DESC"
-		);
-		return ps.executeQuery();
+		CallableStatement cs = con.prepareCall("{CALL VerLogs()}");
+		return cs.executeQuery();
 	}
 }
