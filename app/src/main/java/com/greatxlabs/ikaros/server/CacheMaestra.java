@@ -35,41 +35,45 @@ public class CacheMaestra {
 
 	private void cargarRoles() throws SQLException {
 		try (ResultSet rs = accesoDatos.consultarRoles()) {
-			while (rs.next()) {
-				roles.put(rs.getString(2).toUpperCase(), rs.getInt(1));
-			}
+			cargarDesdeResultSet(rs, roles);
 		}
 	}
 
 	private void cargarAptitudes() throws SQLException {
 		try (ResultSet rs = accesoDatos.consultarAptitudes()) {
-			while (rs.next()) {
-				aptitudes.put(rs.getString(2).toUpperCase(), rs.getInt(1));
-			}
+			cargarDesdeResultSet(rs, aptitudes);
 		}
 	}
 
 	private void cargarEstadosMision() throws SQLException {
 		try (ResultSet rs = accesoDatos.listarEstadosMision()) {
-			while (rs.next()) {
-				estadosMision.put(rs.getString(2).toUpperCase(), rs.getInt(1));
-			}
+			cargarDesdeResultSet(rs, estadosMision);
 		}
 	}
 
 	private void cargarEstadosTripulante() throws SQLException {
 		try (ResultSet rs = accesoDatos.listarEstadosTripulante()) {
-			while (rs.next()) {
-				estadosTripulante.put(rs.getString(2).toUpperCase(), rs.getInt(1));
-			}
+			cargarDesdeResultSet(rs, estadosTripulante);
 		}
 	}
 
 	private void cargarEstadosEvento() throws SQLException {
 		try (ResultSet rs = accesoDatos.listarEstadosEvento()) {
-			while (rs.next()) {
-				estadosEvento.put(rs.getString(2).toUpperCase(), rs.getInt(1));
+			cargarDesdeResultSet(rs, estadosEvento);
+		}
+	}
+
+	private static void cargarDesdeResultSet(ResultSet rs, Map<String, Integer> mapa) throws SQLException {
+		while (rs.next()) {
+			String col2 = rs.getString(2);
+			if (col2 == null) continue;
+			int id;
+			try {
+				id = rs.getInt(1);
+			} catch (Exception e) {
+				continue;
 			}
+			mapa.put(col2.toUpperCase(), id);
 		}
 	}
 
