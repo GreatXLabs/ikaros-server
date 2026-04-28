@@ -146,17 +146,19 @@ public class AccesoDatos {
 		cs.execute();
 	}
 
-	public void actualizarEstadoMision(int id, int estadoID) throws SQLException {
+	public void actualizarEstadoMision(int id, int estadoID, Integer retrasoInicio, Integer retrasoFin) throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ActualizarEstadoMision(?, ?)}");
+		CallableStatement cs = con.prepareCall("{CALL ActualizarEstadoMision(?, ?, ?, ?)}");
 		cs.setInt(1, id);
 		cs.setInt(2, estadoID);
+		if (retrasoInicio != null) cs.setInt(3, retrasoInicio); else cs.setNull(3, java.sql.Types.INTEGER);
+		if (retrasoFin != null) cs.setInt(4, retrasoFin); else cs.setNull(4, java.sql.Types.INTEGER);
 		cs.execute();
 	}
 
-	public ResultSet listarMisionesActivas() throws SQLException {
+	public ResultSet listarMisiones() throws SQLException {
 		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ListarMisionesActivas()}");
+		CallableStatement cs = con.prepareCall("{CALL ListarMisiones()}");
 		return cs.executeQuery();
 	}
 
@@ -217,6 +219,13 @@ public class AccesoDatos {
 		return ConexionBD.getConexion().prepareCall("{CALL ListarTripulantes()}").executeQuery();
 	}
 
+	public ResultSet listarTripulantesMision(int misionID) throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ListarTripulantesMision(?)}");
+		cs.setInt(1, misionID);
+		return cs.executeQuery();
+	}
+
 	public ResultSet listarMisionesTripulante(int tripulanteID) throws SQLException {
 		Connection con = ConexionBD.getConexion();
 		CallableStatement cs = con.prepareCall("{CALL ListarMisionesTripulante(?)}");
@@ -248,6 +257,12 @@ public class AccesoDatos {
 		cs.setInt(1, eventoID);
 		cs.setInt(2, 2);
 		cs.execute();
+	}
+
+	public ResultSet listarEventos() throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ListarEventos()}");
+		return cs.executeQuery();
 	}
 
 	public ResultSet consultarEventos(int misionID) throws SQLException {

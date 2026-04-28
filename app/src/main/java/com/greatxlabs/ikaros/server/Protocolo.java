@@ -63,6 +63,16 @@ public class Protocolo {
 			case "CONSULTAR_APTITUDES":
 				return formatearLista(accesoDatos.consultarAptitudes(), 2);
 
+			// --- ESTADOS ---
+			case "LISTAR_ESTADOS_MISIONES":
+				return formatearLista(accesoDatos.listarEstadosMision(), 2);
+
+			case "LISTAR_ESTADOS_TRIPULANTES":
+				return formatearLista(accesoDatos.listarEstadosTripulante(), 2);
+
+			case "LISTAR_ESTADOS_EVENTOS":
+				return formatearLista(accesoDatos.listarEstadosEvento(), 2);
+
 			// --- REGISTROS (LOGS) ---
 			case "REGISTRAR_USUARIO": {
 				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
@@ -117,11 +127,13 @@ public class Protocolo {
 
 			case "ACTUALIZAR_ESTADO_MISION":
 				if (partes.length < 4) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.actualizarEstadoMision(Integer.parseInt(partes[2]), CacheMaestra.getEstadoMisionID(partes[3]));
+				Integer retrasoInicio = partes.length > 4 && !partes[4].isEmpty() ? Integer.parseInt(partes[4]) : null;
+				Integer retrasoFin = partes.length > 5 && !partes[5].isEmpty() ? Integer.parseInt(partes[5]) : null;
+				accesoDatos.actualizarEstadoMision(Integer.parseInt(partes[2]), CacheMaestra.getEstadoMisionID(partes[3]), retrasoInicio, retrasoFin);
 				return "OK|Estado actualizado";
 
-			case "LISTAR_MISIONES_ACTIVAS":
-				return formatearLista(accesoDatos.listarMisionesActivas(), 3);
+			case "LISTAR_MISIONES":
+				return formatearLista(accesoDatos.listarMisiones(), 7);
 
 			case "CONSULTAR_MISION":
 				return formatearDetalle(accesoDatos.consultarMision(Integer.parseInt(partes[2])), 8);
@@ -167,15 +179,22 @@ public class Protocolo {
 			case "LISTAR_TRIPULANTES":
 				return formatearLista(accesoDatos.listarTripulantes(), 8);
 
+			case "LISTAR_TRIPULANTES_MISION":
+				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+				return formatearLista(accesoDatos.listarTripulantesMision(Integer.parseInt(partes[2])), 5);
+
 			case "CONSULTAR_TRIPULANTE":
 				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
 				return formatearDetalle(accesoDatos.consultarTripulante(Integer.parseInt(partes[2])), 9);
 
 			case "LISTAR_MISIONES_TRIPULANTE":
 				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
-				return formatearLista(accesoDatos.listarMisionesTripulante(Integer.parseInt(partes[2])), 4);
+				return formatearLista(accesoDatos.listarMisionesTripulante(Integer.parseInt(partes[2])), 5);
 
 			// --- EVENTOS (REGISTRADOR) ---
+			case "LISTAR_EVENTOS":
+				return formatearLista(accesoDatos.listarEventos(), 6);
+
 			case "REGISTRAR_EVENTO":
 				if (partes.length < 5) return "ERROR|E99|Parámetros insuficientes";
 				accesoDatos.registrarEvento(Integer.parseInt(partes[2]), partes[3], partes[4], new Timestamp(System.currentTimeMillis()));
@@ -228,10 +247,14 @@ public class Protocolo {
 		StringBuilder sb = new StringBuilder("OK|");
 		boolean primero = true;
 		while (rs.next()) {
+			// Saltar filas de MensajeResultado (patrón "Exito:" o "Error:" en primera columna)
+			String firstCol = rs.getString(1);
+			if (firstCol != null && (firstCol.startsWith("Exito:") || firstCol.startsWith("Error:"))) continue;
 			if (!primero) sb.append(";");
 			for (int i = 1; i <= columnas; i++) {
-				sb.append(rs.getString(i) != null ? rs.getString(i) : "");
-				if (i < columnas) sb.append(":");
+				String val = rs.getString(i);
+				sb.append(val != null ? val : "");
+				if (i < columnas) sb.append("~");
 			}
 			primero = false;
 		}
@@ -242,7 +265,8 @@ public class Protocolo {
 		if (rs.next()) {
 			StringBuilder sb = new StringBuilder("OK");
 			for (int i = 1; i <= columnas; i++) {
-				sb.append("|").append(rs.getString(i) == null ? "" : rs.getString(i));
+				String val = rs.getString(i);
+				sb.append("|").append(val == null ? "" : val);
 			}
 			return sb.toString();
 		}

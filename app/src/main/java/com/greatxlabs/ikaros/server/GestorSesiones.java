@@ -77,14 +77,21 @@ public class GestorSesiones {
 				operacion.equals("MODIFICAR_USUARIO") ||
 				operacion.equals("BAJA_USUARIO") ||
 				operacion.equals("LISTAR_USUARIOS") ||
-				operacion.equals("CONSULTAR_ROLES");
+				operacion.equals("CONSULTAR_ROLES") ||
+				operacion.equals("LISTAR_ESTADOS_MISIONES") ||
+				operacion.equals("LISTAR_ESTADOS_TRIPULANTES") ||
+				operacion.equals("LISTAR_ESTADOS_EVENTOS");
 
 		case "COORDINADOR":
 			return operacion.equals("REGISTRAR_MISION") ||
 				operacion.equals("MODIFICAR_MISION") ||
 				operacion.equals("ACTUALIZAR_ESTADO_MISION") ||
-				operacion.equals("LISTAR_MISIONES_ACTIVAS") ||
-				operacion.equals("CONSULTAR_MISION");
+				operacion.equals("LISTAR_MISIONES") ||
+				operacion.equals("CONSULTAR_MISION") ||
+				operacion.equals("LISTAR_TRIPULANTES_MISION") ||
+				operacion.equals("LISTAR_ESTADOS_MISIONES") ||
+				operacion.equals("LISTAR_ESTADOS_TRIPULANTES") ||
+				operacion.equals("LISTAR_ESTADOS_EVENTOS");
 
 		case "ASIGNADOR":
 			return operacion.equals("REGISTRAR_TRIPULANTE") ||
@@ -93,12 +100,28 @@ public class GestorSesiones {
 				operacion.equals("ASIGNAR_TRIPULANTE") ||
 				operacion.equals("LISTAR_TRIPULANTES") ||
 				operacion.equals("CONSULTAR_TRIPULANTE") ||
-				operacion.equals("CONSULTAR_APTITUDES") || operacion.equals("LISTAR_MISIONES_TRIPULANTE");
+				operacion.equals("CONSULTAR_APTITUDES") ||
+				operacion.equals("LISTAR_EVENTOS") ||
+				operacion.equals("CONSULTAR_EVENTOS") ||
+				operacion.equals("LISTAR_MISIONES_TRIPULANTE") ||
+				operacion.equals("LISTAR_TRIPULANTES_MISION") ||
+				operacion.equals("LISTAR_MISIONES") ||
+				operacion.equals("CONSULTAR_MISION") ||
+				operacion.equals("LISTAR_ESTADOS_MISIONES") ||
+				operacion.equals("LISTAR_ESTADOS_TRIPULANTES") ||
+				operacion.equals("LISTAR_ESTADOS_EVENTOS");
 
 		case "REGISTRADOR":
-			return operacion.equals("REGISTRAR_EVENTO") ||
+			return operacion.equals("LISTAR_EVENTOS") ||
+				operacion.equals("REGISTRAR_EVENTO") ||
 				operacion.equals("BAJA_EVENTO") ||
-				operacion.equals("CONSULTAR_EVENTOS");
+				operacion.equals("CONSULTAR_EVENTOS") ||
+				operacion.equals("LISTAR_MISIONES") ||
+				operacion.equals("CONSULTAR_MISION") ||
+				operacion.equals("LISTAR_TRIPULANTES_MISION") ||
+				operacion.equals("LISTAR_ESTADOS_MISIONES") ||
+				operacion.equals("LISTAR_ESTADOS_TRIPULANTES") ||
+				operacion.equals("LISTAR_ESTADOS_EVENTOS");
 
 		default:
 			return false;
