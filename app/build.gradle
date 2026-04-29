@@ -48,8 +48,14 @@ tasks.named('test') {
 
 tasks.named('jar') {
     archiveBaseName = 'ikaros-server'
-    archiveVersion = '1.0'
+    archiveVersion = '1.1-sin-estado-mision'
     manifest {
         attributes['Main-Class'] = 'com.greatxlabs.ikaros.server.Servidor'
     }
+}
+
+tasks.named('shadowJar') {
+    archiveBaseName = 'ikaros-server'
+    archiveVersion = '1.1-sin-estado-mision'
+    archiveClassifier = 'all'
 }
