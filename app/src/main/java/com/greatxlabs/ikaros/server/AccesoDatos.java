@@ -113,10 +113,10 @@ public class AccesoDatos {
 		return cs.executeQuery();
 	}
 
-	public String obtenerClaveUsuario(int usuarioID) throws SQLException {
+	public String obtenerClaveUsuario(String usuario) throws SQLException {
 		Connection con = ConexionBD.getConexion();
 		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
-		cs.setInt(1, usuarioID);
+		cs.setString(1, usuario);
 		ResultSet rs = cs.executeQuery();
 		if (rs.next()) return rs.getString("Clave");
 		return "";
@@ -170,7 +170,7 @@ public class AccesoDatos {
 	}
 
 	// --- TRIPULANTES ---
-	public void registrarTripulante(int estadoTID, int sexoID, int peso, int altura, String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
+	public ResultSet registrarTripulante(int estadoTID, int sexoID, int peso, int altura, String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
 		Connection con = ConexionBD.getConexion();
 		CallableStatement cs = con.prepareCall("{CALL ATripulante(?, ?, ?, ?, ?, ?, ?, ?)}");
 		cs.setInt(1, estadoTID);
@@ -181,7 +181,7 @@ public class AccesoDatos {
 		cs.setString(6, apellido);
 		cs.setString(7, imagen);
 		cs.setDate(8, fechaNacimiento);
-		cs.execute();
+		return cs.executeQuery();
 	}
 
 	public void modificarTripulante(int tripulanteID, int estadoTID, int sexoID, int peso, int altura, String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
@@ -238,6 +238,30 @@ public class AccesoDatos {
 		CallableStatement cs = con.prepareCall("{CALL ConsultarTripulante(?)}");
 		cs.setInt(1, tripulanteID);
 		return cs.executeQuery();
+	}
+
+	public ResultSet consultarCapacidades(int tripulanteID) throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ConsultarCapacidades(?)}");
+		cs.setInt(1, tripulanteID);
+		return cs.executeQuery();
+	}
+
+	public void registrarCapacidad(int tripulanteID, int aptitudID, int calificacion, String fecha) throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL RegistrarCapacidad(?, ?, ?, ?)}");
+		cs.setInt(1, tripulanteID);
+		cs.setInt(2, aptitudID);
+		cs.setInt(3, calificacion);
+		cs.setString(4, fecha);
+		cs.execute();
+	}
+
+	public void eliminarCapacidades(int tripulanteID) throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL EliminarCapacidades(?)}");
+		cs.setInt(1, tripulanteID);
+		cs.execute();
 	}
 
 	// --- EVENTOS Y LOGS ---

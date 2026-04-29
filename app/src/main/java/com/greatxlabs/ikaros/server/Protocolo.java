@@ -87,7 +87,7 @@ public class Protocolo {
 			case "MODIFICAR_USUARIO": {
 				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
 				int usuarioID = accesoDatos.obtenerUsuarioID(partes[2]);
-				String clave = partes[3].isEmpty() ? accesoDatos.obtenerClaveUsuario(usuarioID) : partes[3];
+				String clave = partes[3].isEmpty() ? accesoDatos.obtenerClaveUsuario(partes[2]) : partes[3];
 				accesoDatos.modificarUsuario(
 					usuarioID, CacheMaestra.getRolID(partes[6]),
 					partes[2], partes[4], partes[5], clave
@@ -141,16 +141,14 @@ public class Protocolo {
 			// --- TRIPULANTES (ASIGNADOR) ---
 			case "REGISTRAR_TRIPULANTE":
 				if (partes.length < 9) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.registrarTripulante(
-					CacheMaestra.getEstadoTripulanteID("ACTIVO"),
+				return formatearDetalle(accesoDatos.registrarTripulante(
+					CacheMaestra.getEstadoTripulanteID("INACTIVO"),
 					obtenerSexoID(partes[2]),
 					Integer.parseInt(partes[4]),
 					Integer.parseInt(partes[5]),
-					partes[6], partes[7],
-					partes[8],
+					partes[6], partes[7], partes[8],
 					Date.valueOf(partes[3])
-				);
-				return "OK|Tripulante registrado";
+				), 1);
 
 			case "MODIFICAR_TRIPULANTE":
 				if (partes.length < 11) return "ERROR|E99|Parámetros insuficientes";
@@ -171,6 +169,21 @@ public class Protocolo {
 				accesoDatos.bajaTripulante(Integer.parseInt(partes[2]));
 				return "OK|Tripulante dado de baja";
 
+		case "ELIMINAR_CAPACIDADES":
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			accesoDatos.eliminarCapacidades(Integer.parseInt(partes[2]));
+			return "OK|Capacidades eliminadas";
+
+		case "REGISTRAR_CAPACIDAD":
+			if (partes.length < 6) return "ERROR|E99|Parámetros insuficientes";
+			accesoDatos.registrarCapacidad(
+				Integer.parseInt(partes[2]),
+				Integer.parseInt(partes[3]),
+				Integer.parseInt(partes[4]),
+				partes[5]
+			);
+			return "OK|Capacidad registrada";
+
 			case "ASIGNAR_TRIPULANTE":
 				if (partes.length < 4) return "ERROR|E99|Parámetros insuficientes";
 				accesoDatos.asignarTripulante(Integer.parseInt(partes[2]), Integer.parseInt(partes[3]), new Timestamp(System.currentTimeMillis()));
@@ -186,6 +199,10 @@ public class Protocolo {
 			case "CONSULTAR_TRIPULANTE":
 				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
 				return formatearDetalle(accesoDatos.consultarTripulante(Integer.parseInt(partes[2])), 9);
+
+		case "CONSULTAR_CAPACIDADES":
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			return formatearLista(accesoDatos.consultarCapacidades(Integer.parseInt(partes[2])), 4);
 
 			case "LISTAR_MISIONES_TRIPULANTE":
 				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";

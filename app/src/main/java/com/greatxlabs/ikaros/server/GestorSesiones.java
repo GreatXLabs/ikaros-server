@@ -89,6 +89,7 @@ public class GestorSesiones {
 				operacion.equals("LISTAR_MISIONES") ||
 				operacion.equals("CONSULTAR_MISION") ||
 				operacion.equals("LISTAR_TRIPULANTES_MISION") ||
+				operacion.equals("CONSULTAR_CAPACIDADES") ||
 				operacion.equals("LISTAR_ESTADOS_MISIONES") ||
 				operacion.equals("LISTAR_ESTADOS_TRIPULANTES") ||
 				operacion.equals("LISTAR_ESTADOS_EVENTOS");
@@ -98,8 +99,11 @@ public class GestorSesiones {
 				operacion.equals("MODIFICAR_TRIPULANTE") ||
 				operacion.equals("BAJA_TRIPULANTE") ||
 				operacion.equals("ASIGNAR_TRIPULANTE") ||
+				operacion.equals("REGISTRAR_CAPACIDAD") ||
+				operacion.equals("ELIMINAR_CAPACIDADES") ||
 				operacion.equals("LISTAR_TRIPULANTES") ||
 				operacion.equals("CONSULTAR_TRIPULANTE") ||
+				operacion.equals("CONSULTAR_CAPACIDADES") ||
 				operacion.equals("CONSULTAR_APTITUDES") ||
 				operacion.equals("LISTAR_EVENTOS") ||
 				operacion.equals("CONSULTAR_EVENTOS") ||
@@ -119,6 +123,7 @@ public class GestorSesiones {
 				operacion.equals("LISTAR_MISIONES") ||
 				operacion.equals("CONSULTAR_MISION") ||
 				operacion.equals("LISTAR_TRIPULANTES_MISION") ||
+				operacion.equals("CONSULTAR_CAPACIDADES") ||
 				operacion.equals("LISTAR_ESTADOS_MISIONES") ||
 				operacion.equals("LISTAR_ESTADOS_TRIPULANTES") ||
 				operacion.equals("LISTAR_ESTADOS_EVENTOS");
