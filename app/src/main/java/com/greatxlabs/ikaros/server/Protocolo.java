@@ -115,13 +115,12 @@ public class Protocolo {
 				return "OK|Misión registrada";
 
 			case "MODIFICAR_MISION":
-				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
+				if (partes.length < 6) return "ERROR|E99|Parámetros insuficientes";
 				accesoDatos.modificarMision(
 					Integer.parseInt(partes[2]),
-					CacheMaestra.getEstadoMisionID(partes[3]),
-					partes[4], partes[5],
-					parseTimestamp(partes[6]),
-					parseTimestamp(partes[7])
+					partes[3], partes[4],
+					parseTimestamp(partes[5]),
+					parseTimestamp(partes[6])
 				);
 				return "OK|Misión modificada";
 

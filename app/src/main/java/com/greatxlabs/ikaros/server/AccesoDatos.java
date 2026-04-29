@@ -134,15 +134,14 @@ public class AccesoDatos {
 		cs.execute();
 	}
 
-	public void modificarMision(int id, int estadoMID, String nombre, String desc, Timestamp ini, Timestamp fin) throws SQLException {
+	public void modificarMision(int id, String nombre, String desc, Timestamp ini, Timestamp fin) throws SQLException {
 		Connection con = ConexionBD.getConexion();
 		CallableStatement cs = con.prepareCall("{CALL MMision(?, ?, ?, ?, ?)}");
 		cs.setInt(1, id);
-		cs.setInt(2, estadoMID);
-		cs.setString(3, nombre);
-		cs.setString(4, desc);
-		cs.setTimestamp(5, ini);
-		cs.setTimestamp(6, fin);
+		cs.setString(2, nombre);
+		cs.setString(3, desc);
+		cs.setTimestamp(4, ini);
+		cs.setTimestamp(5, fin);
 		cs.execute();
 	}
 
