@@ -16,7 +16,8 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: maven
+          cache: gradle
 
-      - name: Build and test with Maven
-        run: mvn clean install
+      - name: Build and test with Gradle
+        working-directory: ./app
+        run: ./gradlew build
