@@ -36,6 +36,7 @@ public class GestorSesiones {
 	}
 
 	public String iniciarSesion(String usuario, String clave) {
+		if (accesoDatos == null) return null;
 		try {
 			boolean credencialesValidas = accesoDatos.validarLogin(usuario, clave);
 			if (!credencialesValidas) return null;
