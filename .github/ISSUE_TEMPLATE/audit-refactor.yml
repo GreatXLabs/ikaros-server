@@ -1,8 +1,6 @@
-name: Code Audit / Refactor
-description: Problema de calidad, seguridad o claridad detectado en auditoría
+name: Code Audit or Refactor
+description: Problema de calidad, seguridad o claridad detectado en auditoria
 labels: ["audit"]
-projects: []
-assignees: []
 body:
   - type: markdown
     attributes:
@@ -13,15 +11,15 @@ body:
   - type: dropdown
     id: category
     attributes:
-      label: Categoría
+      label: Categoria
       description: Tipo de problema detectado
       options:
-        - Seguridad — vulnerabilidad o exposición de datos sensibles
-        - Robustez — falta de validación o manejo de errores deficiente
-        - Recursos — leak de conexiones, streams o memoria
-        - Claridad — código confuso, sin comentarios ohard to follow
-        - Diseño — estructura mejorable, acoplamiento, responsabilidade mal asignada
-        - Consistencia — comportamiento inconsistente o convenciones no respetadas
+        - Seguridad (vulnerabilidad o exposicion de datos sensibles)
+        - Robustez (falta de validacion o manejo de errores deficiente)
+        - Recursos (leak de conexiones, streams o memoria)
+        - Claridad (codigo confuso o sin comentarios)
+        - Diseno (estructura mejorable o acoplamiento)
+        - Consistencia (comportamiento inconsistente)
     validations:
       required: true
 
@@ -29,29 +27,29 @@ body:
     id: finding
     attributes:
       label: Hallazgo
-      description: Qué se encontró y por qué es un problema
+      description: Que se encontro y por que es un problema
       placeholder: |
-        En Protocolo.java:149 se llama Date.valueOf(partes[3]) sin validar el formato.
-        Si el cliente envía una fecha inválida, se lanza IllegalArgumentException que
-        se captura como E99 genérico en vez de dar un mensaje claro al cliente.
+        En Protocolo.java se llama Date.valueOf(partes[3]) sin validar
+        el formato. Si el cliente envia una fecha invalida, se lanza
+        IllegalArgumentException que se captura como E99 generico.
     validations:
       required: true
 
   - type: input
     id: location
     attributes:
-      label: Ubicación
-      description: Clase y método donde está el problema
-      placeholder: Ej: Protocolo.java:149 (parseTimestamp)
+      label: Ubicacion
+      description: Clase y metodo donde esta el problema
+      placeholder: "Protocolo.java:149 (parseTimestamp)"
     validations:
       required: true
 
   - type: textarea
     id: proposed-fix
     attributes:
-      label: Solución propuesta
-      description: Qué cambio específico resolvería el problema
-      placeholder: Agregar validación de formato con regex antes de llamar a Date.valueOf()
+      label: Solucion propuesta
+      description: Que cambio especifico resolveria el problema
+      placeholder: Agregar validacion de formato con regex antes de llamar a Date.valueOf()
     validations:
       required: false
 
@@ -59,10 +57,10 @@ body:
     id: priority
     attributes:
       label: Prioridad
-      description: Qué tan urgente es resolver esto antes de agregar concurrencia
+      description: Que tan urgente es resolver esto antes de agregar concurrencia
       options:
-        - Alta — puede causar pérdida de datos o crasheo
-        - Media — afecta calidad o seguridad de forma no crítica
-        - Baja — mejora deseable pero no bloqueante
+        - Alta (puede causar perdida de datos o crasheo)
+        - Media (afecta calidad o seguridad de forma no critica)
+        - Baja (mejora deseable pero no bloqueante)
     validations:
       required: true
