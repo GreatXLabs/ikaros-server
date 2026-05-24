@@ -1,0 +1,59 @@
+name: Feature Request
+description: Nueva funcionalidad o mejora
+labels: ["feature"]
+projects: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request
+        Describí qué hay que implementar y por qué. Pensá en cómo se valida que está terminado.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción
+      description: Qué hay que implementar y por qué
+      placeholder: Ej: Agregar validación de formato de fecha antes de llamar a Date.valueOf() para dar un error claro en vez de E99.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+      description: Condiciones que deben cumplirse para considerar esta feature terminada
+      placeholder: |
+        - [ ] El servidor valida el formato de fecha antes de parsear
+        - [ ] Devuelve ERROR|E10|Formato de fecha inválido en vez de E99
+        - [ ] Los casos válidos siguen funcionando igual
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical
+    attributes:
+      label: Contexto técnico
+      description: Qué archivos/clases afecta, dependencias con otros issues, o notas de implementación
+      placeholder: |
+        Afecta: Protocolo.java (método parseTimestamp)
+        Dependencias: ningún otro issue bloquea este
+      render: shell
+    validations:
+      required: false
+
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Estimación de esfuerzo
+      options:
+        - Pequeña — menos de 1 hora
+        - Media — 1 a 3 horas
+        - Grande — más de 3 horas o requiere diseño previo
+    validations:
+      required: true
