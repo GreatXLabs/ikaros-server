@@ -2,6 +2,19 @@ package com.greatxlabs.ikaros.server;
 
 import java.sql.*;
 
+/**
+ * Capa de acceso a datos. Todas las operaciones van por stored procedures.
+ *
+ * Patron de nombres de SP:
+ *   A = Alta (registrar)   — ej: AUsuario, AMision, AEvento
+ *   M = Modificacion       — ej: MUsuario, MMision
+ *   B = Baja (logica)      — ej: BUsuario, BEvento
+ *   + Consultas/Listas     — ej: ConsultarUsuario, ListarMisiones
+ *
+ * Todos los metodos obtienen conexion via ConexionBD.getConexion().
+ * Los metodos que devuelven ResultSet no cierran el CallableStatement
+ * internamente — queda a cargo del caller al cerrar el ResultSet.
+ */
 public class AccesoDatos {
 
 	// --- AUTENTICACIÓN Y SESIÓN ---
@@ -214,6 +227,7 @@ public class AccesoDatos {
 		cs.execute();
 	}
 
+	// TODO: pierde la referencia al CallableStatement — ver issue #7
 	public ResultSet listarTripulantes() throws SQLException {
 		return ConexionBD.getConexion().prepareCall("{CALL ListarTripulantes()}").executeQuery();
 	}

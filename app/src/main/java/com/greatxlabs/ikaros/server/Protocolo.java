@@ -2,6 +2,23 @@ package com.greatxlabs.ikaros.server;
 
 import java.sql.*;
 
+/**
+ * Procesa todos los mensajes del protocolo de aplicación.
+ *
+ * Formato de solicitud: OPERACION|token|param1|param2|...
+ * Formato de respuesta:  OK|datos  o  ERROR|codigo|mensaje
+ *
+ * Listas:   OK|col1~col2;col1~col2  (~ = columnas, ; = filas)
+ * Detalle:  OK|col1|col2|col3
+ *
+ * Codigos de error:
+ *   E00 = sesion invalida/vencida
+ *   E01 = permiso insuficiente
+ *   E02 = credenciales incorrectas
+ *   E05 = ID duplicado (SQL 1062)
+ *   E07 = recurso referenciado no existe (SQL 1452)
+ *   E99 = error interno del servidor
+ */
 public class Protocolo {
 
 	private final GestorSesiones gestorSesiones;
@@ -30,7 +47,8 @@ public class Protocolo {
 
 		String token = partes[1];
 
-		// REGISTRAR_LOG no requiere sesion valida (el gateway maneja la autenticacion)
+		// ADVERTENCIA: REGISTRAR_LOG no requiere sesion valida.
+	// Cualquier cliente puede registrar logs sin autenticarse — ver issue #5
 		if (operacion.equals("REGISTRAR_LOG")) {
 			try {
 				if (partes.length < 6) return "ERROR|E99|Parametros insuficientes";
@@ -56,14 +74,19 @@ public class Protocolo {
 		try {
 			switch (operacion) {
 			// --- ROLES ---
+			// CONSULTAR_ROLES|token
 			case "CONSULTAR_ROLES":
 				return formatearLista(accesoDatos.consultarRoles(), 2);
 
 			// --- APTITUDES ---
+			// CONSULTAR_APTITUDES|token
 			case "CONSULTAR_APTITUDES":
 				return formatearLista(accesoDatos.consultarAptitudes(), 2);
 
 			// --- ESTADOS ---
+			// LISTAR_ESTADOS_MISIONES|token
+			// LISTAR_ESTADOS_TRIPULANTES|token
+			// LISTAR_ESTADOS_EVENTOS|token
 			case "LISTAR_ESTADOS_MISIONES":
 				return formatearLista(accesoDatos.listarEstadosMision(), 2);
 
@@ -73,7 +96,8 @@ public class Protocolo {
 			case "LISTAR_ESTADOS_EVENTOS":
 				return formatearLista(accesoDatos.listarEstadosEvento(), 2);
 
-			// --- REGISTROS (LOGS) ---
+			// --- USUARIOS (RRHH) ---
+			// REGISTRAR_USUARIO|token|usuario|clave|nombre|apellido|rol
 			case "REGISTRAR_USUARIO": {
 				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
 				accesoDatos.registrarUsuario(
@@ -84,6 +108,8 @@ public class Protocolo {
 			}
 
 			// MODIFICAR_USUARIO|token|usuario|clave|nombre|apellido|rol
+			// Si clave viene vacia, se conserva la actual (obteniendola de la BD)
+			// TODO: obtenerClaveUsuario expone contraseñas — ver issue #15
 			case "MODIFICAR_USUARIO": {
 				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
 				int usuarioID = accesoDatos.obtenerUsuarioID(partes[2]);
@@ -104,6 +130,8 @@ public class Protocolo {
 				return formatearLista(accesoDatos.listarUsuarios(), 7);
 
 			// --- MISIONES (COORDINADOR) ---
+			// REGISTRAR_MISION|token|?|nombre|descripcion|fechaInicio|fechaFin
+			//   Nota: partes[2] no se usa (se asigna estado PLANIFICADA automaticamente)
 			case "REGISTRAR_MISION":
 				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
 				accesoDatos.registrarMision(
@@ -138,6 +166,10 @@ public class Protocolo {
 				return formatearDetalle(accesoDatos.consultarMision(Integer.parseInt(partes[2])), 8);
 
 			// --- TRIPULANTES (ASIGNADOR) ---
+			// REGISTRAR_TRIPULANTE|token|sexo|fechaNac|?|peso|altura|nombre|apellido|imagen
+			//   Nota: partes[2]=sexo, partes[3]=fechaNac, partes[4]=peso, partes[5]=altura,
+			//         partes[6]=nombre, partes[7]=apellido, partes[8]=imagen
+			// TODO: parametros posicionales fragiles — ver issue #4
 			case "REGISTRAR_TRIPULANTE":
 				if (partes.length < 9) return "ERROR|E99|Parámetros insuficientes";
 				return formatearDetalle(accesoDatos.registrarTripulante(
@@ -208,6 +240,8 @@ public class Protocolo {
 				return formatearLista(accesoDatos.listarMisionesTripulante(Integer.parseInt(partes[2])), 5);
 
 			// --- EVENTOS (REGISTRADOR) ---
+			// REGISTRAR_EVENTO|token|misionID|titulo|descripcion
+			// TODO: no valida que la mision exista — ver issue #10
 			case "LISTAR_EVENTOS":
 				return formatearLista(accesoDatos.listarEventos(), 6);
 
@@ -226,6 +260,7 @@ public class Protocolo {
 				return formatearLista(accesoDatos.consultarEventos(Integer.parseInt(partes[2])), 5);
 
 			// --- LOGS (JEFE) ---
+			// VER_LOGS|token
 			case "VER_LOGS":
 				return formatearLista(accesoDatos.verLogs(), 7);
 
