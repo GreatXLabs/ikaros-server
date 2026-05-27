@@ -1,0 +1,10 @@
+.gradle/
+build/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+.env
+config.properties
+.claude/
+.git/
+.github/
+*.md
