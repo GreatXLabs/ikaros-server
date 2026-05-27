@@ -5,6 +5,16 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Cache en memoria de tablas de referencia (roles, estados, aptitudes).
+ *
+ * Se carga una vez al iniciar el servidor y nunca se invalidate.
+ * Los lookups son por nombre (case-insensitive) y devuelven el ID numerico.
+ *
+ * Los metodos de lookup son estaticos, lo que dificulta testing.
+ * Para concurrencia: los HashMaps estaticos son seguros si solo se leen
+ * despues de la carga inicial (no se recargan en runtime).
+ */
 public class CacheMaestra {
 
 	private static final Map<String, Integer> roles = new HashMap<>();

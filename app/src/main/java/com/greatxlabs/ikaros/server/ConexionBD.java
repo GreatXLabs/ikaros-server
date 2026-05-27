@@ -4,6 +4,16 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+/**
+ * Singleton de conexion a MariaDB.
+ *
+ * Mantiene una unica Connection estatica compartida por todo el servidor.
+ * Reconexion automatica si la conexion se cerro.
+ *
+ * ADVERTENCIA: no es thread-safe. Si dos threads usan la misma conexion
+ * simultaneamente, los resultados son impredecibles. Para concurrencia
+ * se necesita connection pooling o sincronizacion explicita.
+ */
 public class ConexionBD {
 
 	private static Connection conexion = null;
