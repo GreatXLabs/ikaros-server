@@ -7,7 +7,7 @@ import java.io.*;
  * Configuracion del servidor.
  *
  * Prioridad de lectura: variable de entorno > config.properties > valor por defecto.
- * Las variables de entorno permiten configurar el servidor en Docker
+ * Las variables de entorno permiten configuracion el servidor en Docker
  * sin necesidad de archivos de configuracion.
  *
  * Variables de entorno soportadas:
@@ -49,7 +49,7 @@ public class Configuracion {
 	}
 
 	public static int getMaxClientes() {
-		return Integer.parseInt(getEnvOrProp("MAX_CLIENTS", "server.max_clients", "10"));
+		return Integer.parseInt(getEnvOrProp("MAX_CLIENTS", "server.max_clientes", "10"));
 	}
 
 	public static String getDbHost() {
@@ -61,22 +61,6 @@ public class Configuracion {
 	}
 
 	public static String getDbName() {
-80
-  }
-81
-​
-82
-  public static String getDbUser() {
-83
-    return getEnvOrProp("DB_USER", "db.user", "root");
-84
-  }
-85
-​
-86
-  public static String getDbPassword() {
-87
-    return getEnvOrProp("DB_PASSWORD", "db.password", "admin123");
 		return getEnvOrProp("DB_NAME", "db.name", "ikaros");
 	}
 
