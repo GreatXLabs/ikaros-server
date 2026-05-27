@@ -3,6 +3,14 @@ package com.greatxlabs.ikaros.server;
 import java.util.Properties;
 import java.io.*;
 
+/**
+ * Configuracion del servidor. Lee config.properties del directorio de trabajo.
+ * Si el archivo no existe, lo genera con valores por defecto.
+ *
+ * ADVERTENCIA: la contraseña de BD se almacena en texto plano.
+ * Para concurrencia: todas las propiedades son inmutables despues de
+ * la carga inicial, asi que es seguro leerlas desde multiples threads.
+ */
 public class Configuracion {
     private static final String NOMBRE_ARCHIVO = "config.properties";
     private static final Properties props = new Properties();
