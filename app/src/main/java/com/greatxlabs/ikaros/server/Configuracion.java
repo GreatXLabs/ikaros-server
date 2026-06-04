@@ -75,6 +75,6 @@ public class Configuracion {
 	}
 
 	public static String getDbPassword() {
-		return getEnvOrProp("DB_PASSWORD", "db.password", "admin123");
+		return getEnvOrProp("DB_PASSWORD", "db.password", "");
 	}
 }
