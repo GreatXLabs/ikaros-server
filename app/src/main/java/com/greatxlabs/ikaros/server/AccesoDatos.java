@@ -23,7 +23,7 @@ public class AccesoDatos {
 		CallableStatement cs = con.prepareCall("{? = CALL ValidarLogin(?, ?)}");
 		cs.registerOutParameter(1, java.sql.Types.BOOLEAN);
 		cs.setString(2, usuario);
-		cs.setString(3, clave);
+		cs.setString(3, HashUtil.sha256(clave));
 		cs.execute();
 		return cs.getBoolean(1);
 	}
@@ -96,10 +96,11 @@ public class AccesoDatos {
 		cs.setString(2, usuario);
 		cs.setString(3, nombre);
 		cs.setString(4, apellido);
-		cs.setString(5, clave);
+		cs.setString(5, HashUtil.sha256(clave));
 		cs.execute();
 	}
 
+	/** clave=null significa no modificar la contraseña actual (el SP MUsuario debe tratar NULL como "no cambiar") */
 	public void modificarUsuario(int usuarioID, int rolID, String usuario, String nombre, String apellido, String clave) throws SQLException {
 		Connection con = ConexionBD.getConexion();
 		CallableStatement cs = con.prepareCall("{CALL MUsuario(?, ?, ?, ?, ?, ?)}");
@@ -108,7 +109,8 @@ public class AccesoDatos {
 		cs.setString(3, usuario);
 		cs.setString(4, nombre);
 		cs.setString(5, apellido);
-		cs.setString(6, clave);
+		if (clave != null) cs.setString(6, HashUtil.sha256(clave));
+		else cs.setNull(6, java.sql.Types.VARCHAR);
 		cs.execute();
 	}
 
@@ -124,15 +126,6 @@ public class AccesoDatos {
 		Connection con = ConexionBD.getConexion();
 		CallableStatement cs = con.prepareCall("{CALL ListarUsuarios()}");
 		return cs.executeQuery();
-	}
-
-	public String obtenerClaveUsuario(String usuario) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
-		cs.setString(1, usuario);
-		ResultSet rs = cs.executeQuery();
-		if (rs.next()) return rs.getString("Clave");
-		return "";
 	}
 
 	// --- MISIONES ---
@@ -181,6 +174,10 @@ public class AccesoDatos {
 		return cs.executeQuery();
 	}
 
+	public boolean existeMision(int id) throws SQLException {
+		return consultarMision(id).next();
+	}
+
 	// --- TRIPULANTES ---
 	public ResultSet registrarTripulante(int estadoTID, int sexoID, int peso, int altura, String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
 		Connection con = ConexionBD.getConexion();
@@ -227,9 +224,10 @@ public class AccesoDatos {
 		cs.execute();
 	}
 
-	// TODO: pierde la referencia al CallableStatement — ver issue #7
 	public ResultSet listarTripulantes() throws SQLException {
-		return ConexionBD.getConexion().prepareCall("{CALL ListarTripulantes()}").executeQuery();
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ListarTripulantes()}");
+		return cs.executeQuery();
 	}
 
 	public ResultSet listarTripulantesMision(int misionID) throws SQLException {
@@ -251,6 +249,10 @@ public class AccesoDatos {
 		CallableStatement cs = con.prepareCall("{CALL ConsultarTripulante(?)}");
 		cs.setInt(1, tripulanteID);
 		return cs.executeQuery();
+	}
+
+	public boolean existeTripulante(int id) throws SQLException {
+		return consultarTripulante(id).next();
 	}
 
 	public ResultSet consultarCapacidades(int tripulanteID) throws SQLException {
