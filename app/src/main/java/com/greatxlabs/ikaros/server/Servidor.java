@@ -3,6 +3,16 @@ package com.greatxlabs.ikaros.server;
 import java.net.*;
 import java.io.*;
 
+/**
+ * Punto de entrada del servidor Ikaros.
+ *
+ * Modo SECUENCIAL: acepta un cliente a la vez. El servidor se bloquea
+ * en serverSocket.accept() hasta que llega una conexion, y no acepta
+ * la siguiente hasta que el cliente actual se desconecta.
+ *
+ * Para Bimestre 2: debera convertirse a servidor concurrente
+ * con un thread por conexion (o thread pool).
+ */
 public class Servidor {
     public static void main(String[] args) {
         int puerto = Configuracion.getPuerto();

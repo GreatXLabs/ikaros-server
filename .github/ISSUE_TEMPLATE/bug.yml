@@ -1,0 +1,71 @@
+name: Bug Report
+description: Algo no funciona como deberia
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Report
+        Completá los campos para reportar un problema. Cuanta más info, más rápido se resuelve.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripcion del problema
+      description: Que pasa y que deberia pasar
+      placeholder: |
+        Ej: Al registrar un tripulante con fecha vacía,
+        el servidor crashea en vez de devolver un error de validación.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      description: Instrucciones paso a paso para provocar el bug
+      placeholder: |
+        1. Conectarse al servidor con nc localhost 9000
+        2. Enviar LOGIN|admin|admin123
+        3. Enviar REGISTRAR_TRIPULANTE|...
+        4. Ver error en consola del servidor
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamiento esperado
+      description: Que deberia haber pasado
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log o salida del servidor
+      description: Pegá acá la salida relevante de la consola o del cliente
+      render: shell
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severidad
+      description: Que tan grave es el bug
+      options:
+        - Critico (bloquea funcionalidad core)
+        - Medio (hay workaround pero deberia funcionar)
+        - Bajo (edge case o cosmetico)
+    validations:
+      required: true
+
+  - type: input
+    id: affected-class
+    attributes:
+      label: Clase o metodo afectado
+      description: Si sabes donde esta el problema, indica la clase y metodo
+      placeholder: "Ej: Protocolo.procesar() linea 149"
+    validations:
+      required: false

@@ -1,0 +1,66 @@
+name: Code Audit or Refactor
+description: Problema de calidad, seguridad o claridad detectado en auditoria
+labels: ["audit"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Code Audit / Refactor
+        Usá esta template para reportar problemas de calidad, seguridad o claridad encontrados durante la auditoría del código.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Categoria
+      description: Tipo de problema detectado
+      options:
+        - Seguridad (vulnerabilidad o exposicion de datos sensibles)
+        - Robustez (falta de validacion o manejo de errores deficiente)
+        - Recursos (leak de conexiones, streams o memoria)
+        - Claridad (codigo confuso o sin comentarios)
+        - Diseno (estructura mejorable o acoplamiento)
+        - Consistencia (comportamiento inconsistente)
+    validations:
+      required: true
+
+  - type: textarea
+    id: finding
+    attributes:
+      label: Hallazgo
+      description: Que se encontro y por que es un problema
+      placeholder: |
+        En Protocolo.java se llama Date.valueOf(partes[3]) sin validar
+        el formato. Si el cliente envia una fecha invalida, se lanza
+        IllegalArgumentException que se captura como E99 generico.
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Ubicacion
+      description: Clase y metodo donde esta el problema
+      placeholder: "Protocolo.java:149 (parseTimestamp)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-fix
+    attributes:
+      label: Solucion propuesta
+      description: Que cambio especifico resolveria el problema
+      placeholder: Agregar validacion de formato con regex antes de llamar a Date.valueOf()
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridad
+      description: Que tan urgente es resolver esto antes de agregar concurrencia
+      options:
+        - Alta (puede causar perdida de datos o crasheo)
+        - Media (afecta calidad o seguridad de forma no critica)
+        - Baja (mejora deseable pero no bloqueante)
+    validations:
+      required: true

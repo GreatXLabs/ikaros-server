@@ -4,6 +4,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Gestiona sesiones de usuario y permisos por rol.
+ *
+ * Sesiones: token UUID de 8 caracteres, expiran a los 30 min de inactividad.
+ * Almacenadas en HashMap estatico — NO es thread-safe.
+ *
+ * Roles: JEFE (acceso total), RRHH, COORDINADOR, ASIGNADOR, REGISTRADOR.
+ * Cada rol tiene su conjunto de operaciones permitidas (ver tienePermiso).
+ *
+ * Recurso compartido: sesionesActivas debe sincronizarse para concurrencia.
+ */
 public class GestorSesiones {
 
 	private static class Sesion {
@@ -36,6 +47,7 @@ public class GestorSesiones {
 	}
 
 	public String iniciarSesion(String usuario, String clave) {
+		if (accesoDatos == null) return null;
 		try {
 			boolean credencialesValidas = accesoDatos.validarLogin(usuario, clave);
 			if (!credencialesValidas) return null;
