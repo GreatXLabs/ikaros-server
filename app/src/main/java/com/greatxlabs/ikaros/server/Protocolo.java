@@ -149,7 +149,9 @@ public class Protocolo {
 		case "MODIFICAR_USUARIO": {
 			if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
 			String usuario = partes[2];
-			String clave = partes[3].isEmpty() ? null : partes[3]; // null = no actualizar clave
+			// TODO: obtenerClaveUsuario expone la contrasena en texto plano (issue #15).
+			// Se resuelve cuando usuarios se migre a archivos.
+			String clave = partes[3].isEmpty() ? accesoDatos.obtenerClaveUsuario(usuario) : partes[3];
 			String nombre = partes[4];
 			String apellido = partes[5];
 			String rol = partes[6];
