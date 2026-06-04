@@ -23,7 +23,7 @@ public class AccesoDatos {
 		CallableStatement cs = con.prepareCall("{? = CALL ValidarLogin(?, ?)}");
 		cs.registerOutParameter(1, java.sql.Types.BOOLEAN);
 		cs.setString(2, usuario);
-		cs.setString(3, HashUtil.sha256(clave));
+		cs.setString(3, clave);
 		cs.execute();
 		return cs.getBoolean(1);
 	}
@@ -96,11 +96,10 @@ public class AccesoDatos {
 		cs.setString(2, usuario);
 		cs.setString(3, nombre);
 		cs.setString(4, apellido);
-		cs.setString(5, HashUtil.sha256(clave));
+		cs.setString(5, clave);
 		cs.execute();
 	}
 
-	/** clave=null significa no modificar la contraseña actual (el SP MUsuario debe tratar NULL como "no cambiar") */
 	public void modificarUsuario(int usuarioID, int rolID, String usuario, String nombre, String apellido, String clave) throws SQLException {
 		Connection con = ConexionBD.getConexion();
 		CallableStatement cs = con.prepareCall("{CALL MUsuario(?, ?, ?, ?, ?, ?)}");
@@ -109,9 +108,19 @@ public class AccesoDatos {
 		cs.setString(3, usuario);
 		cs.setString(4, nombre);
 		cs.setString(5, apellido);
-		if (clave != null) cs.setString(6, HashUtil.sha256(clave));
-		else cs.setNull(6, java.sql.Types.VARCHAR);
+		cs.setString(6, clave);
 		cs.execute();
+	}
+
+	// TODO: obtenerClaveUsuario expone la contrasena en texto plano — ver issue #15
+	// Se elimina cuando usuarios se migre a archivos (el hashing se implementa ahi)
+	public String obtenerClaveUsuario(String usuario) throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
+		cs.setString(1, usuario);
+		ResultSet rs = cs.executeQuery();
+		if (rs.next()) return rs.getString("Clave");
+		return "";
 	}
 
 	public void bajaUsuario(String nombreUsuario) throws SQLException {
