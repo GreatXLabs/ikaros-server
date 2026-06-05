@@ -1,7 +1,11 @@
 package com.greatxlabs.ikaros.server;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -11,7 +15,6 @@ import java.util.UUID;
  * Almacenadas en HashMap estatico — NO es thread-safe.
  *
  * Roles: JEFE (acceso total), RRHH, COORDINADOR, ASIGNADOR, REGISTRADOR.
- * Cada rol tiene su conjunto de operaciones permitidas (ver tienePermiso).
  *
  * Recurso compartido: sesionesActivas debe sincronizarse para concurrencia.
  */
@@ -36,6 +39,35 @@ public class GestorSesiones {
 			long treintaMinutosEnMillis = 30 * 60 * 1000;
 			return (System.currentTimeMillis() - ultimaActividad) > treintaMinutosEnMillis;
 		}
+	}
+
+	private static final Map<String, Set<String>> PERMISOS_POR_ROL = new HashMap<>();
+	static {
+		PERMISOS_POR_ROL.put("RRHH", Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+			"REGISTRAR_USUARIO", "MODIFICAR_USUARIO", "BAJA_USUARIO", "LISTAR_USUARIOS",
+			"CONSULTAR_ROLES",
+			"LISTAR_ESTADOS_MISIONES", "LISTAR_ESTADOS_TRIPULANTES", "LISTAR_ESTADOS_EVENTOS"
+		))));
+		PERMISOS_POR_ROL.put("COORDINADOR", Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+			"REGISTRAR_MISION", "MODIFICAR_MISION", "ACTUALIZAR_ESTADO_MISION",
+			"LISTAR_MISIONES", "CONSULTAR_MISION", "LISTAR_TRIPULANTES_MISION",
+			"CONSULTAR_CAPACIDADES",
+			"LISTAR_ESTADOS_MISIONES", "LISTAR_ESTADOS_TRIPULANTES", "LISTAR_ESTADOS_EVENTOS"
+		))));
+		PERMISOS_POR_ROL.put("ASIGNADOR", Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+			"REGISTRAR_TRIPULANTE", "MODIFICAR_TRIPULANTE", "BAJA_TRIPULANTE",
+			"ASIGNAR_TRIPULANTE", "REGISTRAR_CAPACIDAD", "ELIMINAR_CAPACIDADES",
+			"LISTAR_TRIPULANTES", "CONSULTAR_TRIPULANTE", "CONSULTAR_CAPACIDADES", "CONSULTAR_APTITUDES",
+			"LISTAR_EVENTOS", "CONSULTAR_EVENTOS", "LISTAR_MISIONES_TRIPULANTE",
+			"LISTAR_TRIPULANTES_MISION", "LISTAR_MISIONES", "CONSULTAR_MISION",
+			"LISTAR_ESTADOS_MISIONES", "LISTAR_ESTADOS_TRIPULANTES", "LISTAR_ESTADOS_EVENTOS"
+		))));
+		PERMISOS_POR_ROL.put("REGISTRADOR", Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+			"LISTAR_EVENTOS", "REGISTRAR_EVENTO", "BAJA_EVENTO", "CONSULTAR_EVENTOS",
+			"LISTAR_MISIONES", "CONSULTAR_MISION", "LISTAR_TRIPULANTES_MISION",
+			"CONSULTAR_CAPACIDADES",
+			"LISTAR_ESTADOS_MISIONES", "LISTAR_ESTADOS_TRIPULANTES", "LISTAR_ESTADOS_EVENTOS"
+		))));
 	}
 
 	private static final Map<String, Sesion> sesionesActivas = new HashMap<>();
@@ -77,72 +109,14 @@ public class GestorSesiones {
 			return false;
 		}
 
-		// REGISTRAR_LOG lo puede hacer cualquier sesión válida
+		// Cualquier sesión válida puede registrar logs y consultar estados de referencia
 		if (operacion.equals("REGISTRAR_LOG")) return true;
 
 		String rol = sesion.rol;
 		if (rol.equals("JEFE")) return true;
 
-		switch (rol) {
-		case "RRHH":
-			return operacion.equals("REGISTRAR_USUARIO") ||
-				operacion.equals("MODIFICAR_USUARIO") ||
-				operacion.equals("BAJA_USUARIO") ||
-				operacion.equals("LISTAR_USUARIOS") ||
-				operacion.equals("CONSULTAR_ROLES") ||
-				operacion.equals("LISTAR_ESTADOS_MISIONES") ||
-				operacion.equals("LISTAR_ESTADOS_TRIPULANTES") ||
-				operacion.equals("LISTAR_ESTADOS_EVENTOS");
-
-		case "COORDINADOR":
-			return operacion.equals("REGISTRAR_MISION") ||
-				operacion.equals("MODIFICAR_MISION") ||
-				operacion.equals("ACTUALIZAR_ESTADO_MISION") ||
-				operacion.equals("LISTAR_MISIONES") ||
-				operacion.equals("CONSULTAR_MISION") ||
-				operacion.equals("LISTAR_TRIPULANTES_MISION") ||
-				operacion.equals("CONSULTAR_CAPACIDADES") ||
-				operacion.equals("LISTAR_ESTADOS_MISIONES") ||
-				operacion.equals("LISTAR_ESTADOS_TRIPULANTES") ||
-				operacion.equals("LISTAR_ESTADOS_EVENTOS");
-
-		case "ASIGNADOR":
-			return operacion.equals("REGISTRAR_TRIPULANTE") ||
-				operacion.equals("MODIFICAR_TRIPULANTE") ||
-				operacion.equals("BAJA_TRIPULANTE") ||
-				operacion.equals("ASIGNAR_TRIPULANTE") ||
-				operacion.equals("REGISTRAR_CAPACIDAD") ||
-				operacion.equals("ELIMINAR_CAPACIDADES") ||
-				operacion.equals("LISTAR_TRIPULANTES") ||
-				operacion.equals("CONSULTAR_TRIPULANTE") ||
-				operacion.equals("CONSULTAR_CAPACIDADES") ||
-				operacion.equals("CONSULTAR_APTITUDES") ||
-				operacion.equals("LISTAR_EVENTOS") ||
-				operacion.equals("CONSULTAR_EVENTOS") ||
-				operacion.equals("LISTAR_MISIONES_TRIPULANTE") ||
-				operacion.equals("LISTAR_TRIPULANTES_MISION") ||
-				operacion.equals("LISTAR_MISIONES") ||
-				operacion.equals("CONSULTAR_MISION") ||
-				operacion.equals("LISTAR_ESTADOS_MISIONES") ||
-				operacion.equals("LISTAR_ESTADOS_TRIPULANTES") ||
-				operacion.equals("LISTAR_ESTADOS_EVENTOS");
-
-		case "REGISTRADOR":
-			return operacion.equals("LISTAR_EVENTOS") ||
-				operacion.equals("REGISTRAR_EVENTO") ||
-				operacion.equals("BAJA_EVENTO") ||
-				operacion.equals("CONSULTAR_EVENTOS") ||
-				operacion.equals("LISTAR_MISIONES") ||
-				operacion.equals("CONSULTAR_MISION") ||
-				operacion.equals("LISTAR_TRIPULANTES_MISION") ||
-				operacion.equals("CONSULTAR_CAPACIDADES") ||
-				operacion.equals("LISTAR_ESTADOS_MISIONES") ||
-				operacion.equals("LISTAR_ESTADOS_TRIPULANTES") ||
-				operacion.equals("LISTAR_ESTADOS_EVENTOS");
-
-		default:
-			return false;
-		}
+		Set<String> permitidas = PERMISOS_POR_ROL.get(rol);
+		return permitidas != null && permitidas.contains(operacion);
 	}
 
 	public boolean esSesionValida(String token) {
