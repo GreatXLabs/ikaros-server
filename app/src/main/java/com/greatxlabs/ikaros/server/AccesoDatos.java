@@ -112,6 +112,17 @@ public class AccesoDatos {
 		cs.execute();
 	}
 
+	// TODO: obtenerClaveUsuario expone la contrasena en texto plano — ver issue #15
+	// Se elimina cuando usuarios se migre a archivos (el hashing se implementa ahi)
+	public String obtenerClaveUsuario(String usuario) throws SQLException {
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
+		cs.setString(1, usuario);
+		ResultSet rs = cs.executeQuery();
+		if (rs.next()) return rs.getString("Clave");
+		return "";
+	}
+
 	public void bajaUsuario(String nombreUsuario) throws SQLException {
 		int usuarioID = obtenerUsuarioID(nombreUsuario);
 		Connection con = ConexionBD.getConexion();
@@ -124,15 +135,6 @@ public class AccesoDatos {
 		Connection con = ConexionBD.getConexion();
 		CallableStatement cs = con.prepareCall("{CALL ListarUsuarios()}");
 		return cs.executeQuery();
-	}
-
-	public String obtenerClaveUsuario(String usuario) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
-		cs.setString(1, usuario);
-		ResultSet rs = cs.executeQuery();
-		if (rs.next()) return rs.getString("Clave");
-		return "";
 	}
 
 	// --- MISIONES ---
@@ -181,6 +183,10 @@ public class AccesoDatos {
 		return cs.executeQuery();
 	}
 
+	public boolean existeMision(int id) throws SQLException {
+		return consultarMision(id).next();
+	}
+
 	// --- TRIPULANTES ---
 	public ResultSet registrarTripulante(int estadoTID, int sexoID, int peso, int altura, String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
 		Connection con = ConexionBD.getConexion();
@@ -227,9 +233,10 @@ public class AccesoDatos {
 		cs.execute();
 	}
 
-	// TODO: pierde la referencia al CallableStatement — ver issue #7
 	public ResultSet listarTripulantes() throws SQLException {
-		return ConexionBD.getConexion().prepareCall("{CALL ListarTripulantes()}").executeQuery();
+		Connection con = ConexionBD.getConexion();
+		CallableStatement cs = con.prepareCall("{CALL ListarTripulantes()}");
+		return cs.executeQuery();
 	}
 
 	public ResultSet listarTripulantesMision(int misionID) throws SQLException {
@@ -251,6 +258,10 @@ public class AccesoDatos {
 		CallableStatement cs = con.prepareCall("{CALL ConsultarTripulante(?)}");
 		cs.setInt(1, tripulanteID);
 		return cs.executeQuery();
+	}
+
+	public boolean existeTripulante(int id) throws SQLException {
+		return consultarTripulante(id).next();
 	}
 
 	public ResultSet consultarCapacidades(int tripulanteID) throws SQLException {
