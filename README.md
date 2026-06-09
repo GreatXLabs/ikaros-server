@@ -6,6 +6,9 @@ estructura de README (todo puede ser cambiado y los titulos fueron lo primero qu
 
 Que es y para que sirve el programa explicado de forma simple y concisa, podriamos agregar el contexto del programa, que es un proyecto academico, cual era el objetivo principal de hacerlo, etc.
 
+Ikaros es un programa de administracion y gestion de misiones espaciales, surge de un proyecto academico en una tecnicatura en computacion, la idea del proyecto era realizarlo de la manera mas realista posible (como si fuera a ser usado realmente por una institucion como la nasa), utiliza archivos en lugar de una base de datos tradicional ya que el objetivo principal era aprender y desarrollar el concepto de la concurrencia. 
+
+
 ## Tecnologias
 
 Las cosas que se utilizaron para que el programa sea posible (mariadb, java, etc).
