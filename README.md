@@ -8,7 +8,6 @@ Que es y para que sirve el programa explicado de forma simple y concisa, podriam
 
 Ikaros es un programa de administracion y gestion de misiones espaciales, surge de un proyecto academico en una tecnicatura en computacion, la idea del proyecto era realizarlo de la manera mas realista posible (como si fuera a ser usado realmente por una institucion como la nasa), utiliza archivos en lugar de una base de datos tradicional ya que el objetivo principal era aprender y desarrollar el concepto de la concurrencia. 
 
-
 ## Tecnologias
 
 Las cosas que se utilizaron para que el programa sea posible (mariadb, java, etc).
@@ -19,7 +18,7 @@ Que cosas necesita tener en su dispositivo un usuario para usar el programa (ver
 
 ## Instalacion
 
-Que comandos se necesitan para clonar el proyecto en un dispositivo, pasos a seguir para su instalacion y uso (aca entraria como instala las los requisitos para el uso).
+Que comandos se necesitan para clonar el proyecto en un dispositivo, pasos a seguir para su instalacion y uso (aca entraria como instala los requisitos para el uso).
 
 ## Configuracion inicial
 
@@ -33,6 +32,15 @@ Aca deberia haber una breve explicacion de como funcionan los apartados del soft
 
 Esto capas que no es my necesario pero creo que estaria bueno poner el link directo a ikaros-client aca
 
+https://github.com/GreatXLabs/ikaros-client.git
+
 ## Autores 
 
 No hay mucha ciencia es quienes hicieron el programa (nosotros)
+
+https://github.com/LucaGMB/  →  (rol en el equipo)
+https://github.com/GaelSchenone  →  (rol en el equipo)
+https://github.com/juannara  →  (rol en el equipo)
+https://github.com/ECubeCode  →  (rol en el equipo)
+
+
