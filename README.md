@@ -39,8 +39,11 @@ https://github.com/GreatXLabs/ikaros-client.git
 No hay mucha ciencia es quienes hicieron el programa (nosotros)
 
 https://github.com/LucaGMB/  →  (rol en el equipo)
-https://github.com/GaelSchenone  →  (rol en el equipo)
-https://github.com/juannara  →  (rol en el equipo)
-https://github.com/ECubeCode  →  (rol en el equipo)
+
+https://github.com/GaelSchenone  →  Diseñador UX/UI
+
+https://github.com/juannara  →  Documentador y detector de errores
+
+https://github.com/ECubeCode  →  DBA 
 
 
