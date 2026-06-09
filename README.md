@@ -42,7 +42,7 @@ https://github.com/LucaGMB/  →  (rol en el equipo)
 
 https://github.com/GaelSchenone  →  Diseñador UX/UI
 
-https://github.com/juannara  →  Documentador y detector de errores
+https://github.com/juannara  →  Documentador e identificador de errores
 
 https://github.com/ECubeCode  →  DBA 
 
