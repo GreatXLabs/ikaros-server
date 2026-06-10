@@ -27,6 +27,9 @@ dependencies {
     
     // MariaDB JDBC driver
     implementation libs.mariadb.java.client
+
+    // Carga de variables de entorno desde .env
+    implementation libs.dotenv.java
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
