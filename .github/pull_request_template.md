@@ -1,10 +1,6 @@
 ## ¿Qué hace este PR?
 <!-- Describí en 2-3 líneas qué cambia y por qué -->
 
-## Rama destino
-<!-- ⚠️ Los PRs van siempre a `dev`, nunca directo a `main` -->
-- [ ] La rama destino es `dev`
-
 ## Issue relacionado
 Closes #
 
