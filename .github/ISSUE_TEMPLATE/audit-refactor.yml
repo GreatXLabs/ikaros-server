@@ -1,6 +1,8 @@
 name: Code Audit or Refactor
 description: Problema de calidad, seguridad o claridad detectado en auditoria
+type: Task
 labels: ["audit"]
+assignees: ["LucaGMB"]
 body:
   - type: markdown
     attributes:
