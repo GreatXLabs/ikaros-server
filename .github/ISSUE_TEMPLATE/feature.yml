@@ -1,5 +1,6 @@
 name: Feature Request
 description: Nueva funcionalidad o mejora
+type: Feature
 labels: ["feature"]
 body:
   - type: markdown
