@@ -12,11 +12,9 @@ import java.util.UUID;
  * Gestiona sesiones de usuario y permisos por rol.
  *
  * Sesiones: token UUID de 8 caracteres, expiran a los 30 min de inactividad.
- * Almacenadas en HashMap estatico — NO es thread-safe.
+ * El mapa sesionesActivas esta protegido por un SemaforoRW.
  *
  * Roles: JEFE (acceso total), RRHH, COORDINADOR, ASIGNADOR, REGISTRADOR.
- *
- * Recurso compartido: sesionesActivas debe sincronizarse para concurrencia.
  */
 public class GestorSesiones {
 
@@ -71,6 +69,7 @@ public class GestorSesiones {
 	}
 
 	private static final Map<String, Sesion> sesionesActivas = new HashMap<>();
+	private static final SemaforoRW semSesiones = new SemaforoRW();
 
 	private final AccesoDatos accesoDatos;
 
@@ -90,61 +89,126 @@ public class GestorSesiones {
 					int usuarioID = rs.getInt("UsuarioID");
 					String rol = rs.getString("NombreRol");
 
-					sesionesActivas.put(token, new Sesion(usuarioID, rol.toUpperCase()));
+					semSesiones.iniciarEscritura();
+					try {
+						sesionesActivas.put(token, new Sesion(usuarioID, rol.toUpperCase()));
+					} finally {
+						semSesiones.terminarEscritura();
+					}
 					return token + "|" + rol.toUpperCase() + "|" + usuarioID;
 				}
 			}
 		} catch (java.sql.SQLException e) {
 			System.err.println("Error en validación de sesión: " + e.getMessage());
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		}
 		return null;
 	}
 
 	public boolean tienePermiso(String token, String operacion) {
-		Sesion sesion = sesionesActivas.get(token);
-		if (sesion == null) return false;
+		try {
+			semSesiones.iniciarLectura();
+			Sesion sesion;
+			try {
+				sesion = sesionesActivas.get(token);
+			} finally {
+				semSesiones.terminarLectura();
+			}
 
-		if (sesion.haExpirado()) {
-			sesionesActivas.remove(token);
+			if (sesion == null) return false;
+
+			if (sesion.haExpirado()) {
+				semSesiones.iniciarEscritura();
+				try {
+					sesionesActivas.remove(token);
+				} finally {
+					semSesiones.terminarEscritura();
+				}
+				return false;
+			}
+
+			if (operacion.equals("REGISTRAR_LOG")) return true;
+
+			String rol = sesion.rol;
+			if (rol.equals("JEFE")) return true;
+
+			Set<String> permitidas = PERMISOS_POR_ROL.get(rol);
+			return permitidas != null && permitidas.contains(operacion);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 			return false;
 		}
-
-		// Cualquier sesión válida puede registrar logs y consultar estados de referencia
-		if (operacion.equals("REGISTRAR_LOG")) return true;
-
-		String rol = sesion.rol;
-		if (rol.equals("JEFE")) return true;
-
-		Set<String> permitidas = PERMISOS_POR_ROL.get(rol);
-		return permitidas != null && permitidas.contains(operacion);
 	}
 
 	public boolean esSesionValida(String token) {
-		Sesion sesion = sesionesActivas.get(token);
-		if (sesion == null) return false;
+		try {
+			semSesiones.iniciarLectura();
+			Sesion sesion;
+			try {
+				sesion = sesionesActivas.get(token);
+			} finally {
+				semSesiones.terminarLectura();
+			}
 
-		if (sesion.haExpirado()) {
-			sesionesActivas.remove(token);
+			if (sesion == null) return false;
+
+			if (sesion.haExpirado()) {
+				semSesiones.iniciarEscritura();
+				try {
+					sesionesActivas.remove(token);
+				} finally {
+					semSesiones.terminarEscritura();
+				}
+				return false;
+			}
+
+			semSesiones.iniciarEscritura();
+			try {
+				sesion.renovar();
+			} finally {
+				semSesiones.terminarEscritura();
+			}
+			return true;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 			return false;
 		}
-
-		sesion.renovar();
-		return true;
 	}
 
 	public String obtenerRol(String token) {
-		Sesion sesion = sesionesActivas.get(token);
-		if (sesion != null && !sesion.haExpirado()) {
-			return sesion.rol;
+		try {
+			semSesiones.iniciarLectura();
+			try {
+				Sesion sesion = sesionesActivas.get(token);
+				if (sesion != null && !sesion.haExpirado()) {
+					return sesion.rol;
+				}
+				return null;
+			} finally {
+				semSesiones.terminarLectura();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
 		}
-		return null;
 	}
 
 	public Integer obtenerUsuarioID(String token) {
-		Sesion sesion = sesionesActivas.get(token);
-		if (sesion != null && !sesion.haExpirado()) {
-			return sesion.usuarioID;
+		try {
+			semSesiones.iniciarLectura();
+			try {
+				Sesion sesion = sesionesActivas.get(token);
+				if (sesion != null && !sesion.haExpirado()) {
+					return sesion.usuarioID;
+				}
+				return null;
+			} finally {
+				semSesiones.terminarLectura();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
 		}
-		return null;
 	}
 }
