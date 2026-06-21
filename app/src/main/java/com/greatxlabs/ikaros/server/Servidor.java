@@ -45,6 +45,7 @@ public class Servidor {
                 System.err.println("[" + Thread.currentThread().getName() + "] Error manejando cliente: " + e.getMessage());
             } finally {
                 System.out.println("[" + Thread.currentThread().getName() + "] Cliente desconectado.");
+                LogSistema.registrar("DESCONEXION " + socket.getInetAddress());
             }
         }
     }
@@ -68,6 +69,7 @@ public class Servidor {
             while (true) {
                 Socket cliente = serverSocket.accept();
                 System.out.println("Cliente conectado: " + cliente.getInetAddress());
+                LogSistema.registrar("CONEXION nueva desde " + cliente.getInetAddress());
 
                 Thread hilo = new Thread(new ManejadorCliente(cliente, gestorSesiones, accesoDatos));
                 hilo.start();

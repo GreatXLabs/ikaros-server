@@ -37,12 +37,20 @@ public class Protocolo {
 	}
 
 	public String procesar(String solicitud) {
+		String resultado = procesarInterno(solicitud);
+		LogSistema.registrar("RESULTADO " + resultado);
+		return resultado;
+	}
+
+	private String procesarInterno(String solicitud) {
 		if (solicitud == null || solicitud.isEmpty()) {
 			return "ERROR|E99|Error interno del servidor";
 		}
 
 		String[] partes = solicitud.split("\\|", -1);
 		String operacion = partes[0].toUpperCase();
+		String tokenLog = partes.length > 1 ? partes[1] : "-";
+		LogSistema.registrar("OPERACION " + operacion + " token=" + tokenLog);
 
 		if (operacion.equals("LOGIN")) {
 			return manejarLogin(partes);
