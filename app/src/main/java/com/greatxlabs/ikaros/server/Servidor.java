@@ -25,6 +25,7 @@ public class Servidor {
 
         @Override
         public void run() {
+            String direccionCliente = socket.getInetAddress().toString();
             try (socket) {
                 BufferedReader entrada = new BufferedReader(
                         new InputStreamReader(socket.getInputStream()));
@@ -45,7 +46,7 @@ public class Servidor {
                 System.err.println("[" + Thread.currentThread().getName() + "] Error manejando cliente: " + e.getMessage());
             } finally {
                 System.out.println("[" + Thread.currentThread().getName() + "] Cliente desconectado.");
-                LogSistema.registrar("DESCONEXION " + socket.getInetAddress());
+                LogSistema.registrar("DESCONEXION " + direccionCliente);
             }
         }
     }
