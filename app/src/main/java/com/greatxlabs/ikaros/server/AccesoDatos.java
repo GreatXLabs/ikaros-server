@@ -107,35 +107,11 @@ public class AccesoDatos {
     }
 
     /**
-     * Escribe la lista de usuarios al archivo JSON ubicado en classpath.
-     * Se protege con un SemaforoRW en modo escritura para acceso exclusivo.
-     *
-     * @param usuarios Lista de objetos UsuarioJson a guardar
-     */
-    private void escribirUsuariosEnJson(List<UsuarioJson> usuarios) { //CAMBIADO: nuevo método
-        try {
-            jsonLock.iniciarEscritura(); //CAMBIADO: bloqueo de escritura
-            try {
-                ObjectMapper writer = new ObjectMapper();
-                writer.enable(SerializationFeature.INDENT_OUTPUT);
-                File file = new File("src/main/resources/Usuarios.json");
-                writer.writeValue(file, usuarios);
-            } finally {
-                jsonLock.terminarEscritura(); //CAMBIADO: liberación de escritura
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            Thread.currentThread().interrupt();
-        } catch (IOException e) {
-            System.err.println("Error al escribir el archivo JSON de usuarios: " + e.getMessage());
-        }
-    }
-     /**
      * Lee todos los roles desde el archivo JSON ubicado en classpath.
      * Se protege con un SemaforoRW en modo lectura.
      *
      * @return Lista de objetos RolJson.
-     */
+    */
     private List<RolJson> leerRolesDesdeJson() { //CAMBIADO: nuevo método
         try {
             jsonLock.iniciarLectura(); //CAMBIADO: bloqueo de lectura
@@ -158,12 +134,12 @@ public class AccesoDatos {
         }
     }
 
-     /**
+    /**
      * Lee todos los estados de usuario desde el archivo JSON ubicado en classpath.
      * Se protege con un SemaforoRW en modo lectura.
      *
      * @return Lista de objetos EstadoJson.
-     */
+    */
     private List<EstadoJson> leerEstadosDesdeJson() { //CAMBIADO: nuevo método
         try {
             jsonLock.iniciarLectura(); //CAMBIADO: bloqueo de lectura
@@ -184,7 +160,6 @@ public class AccesoDatos {
             System.err.println("Error al leer el archivo JSON de estados de usuario: " + e.getMessage());
             return Collections.emptyList();
         }
-    }
     }
 
     /**
