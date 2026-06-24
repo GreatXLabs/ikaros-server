@@ -460,15 +460,17 @@ public class AccesoDatos {
                 List<Map<String, Object>> resultado = new ArrayList<>();
                 for (UsuarioJson usuario : usuarios) {
                     Map<String, Object> fila = new HashMap<>();
-                    fila.put("USUARIOID", usuario.UsuarioID);
+                    // Nombres de columna alineados con lo que devuelve el SP ListarUsuarios:
+                    // SELECT U.UsuarioID AS ID, U.Usuario, U.Nombre, U.Apellido, U.Clave,
+                    //        R.Rol AS RolNombre, R.RolID, EU.Estado AS EstadoNombre
+                    fila.put("ID", usuario.UsuarioID);
                     fila.put("ROLID", usuario.RolID);
                     fila.put("NOMBRE", usuario.Nombre);
                     fila.put("APELLIDO", usuario.Apellido);
                     fila.put("USUARIO", usuario.Usuario);
                     fila.put("CLAVE", usuario.Clave);
-                    fila.put("NOMBREROL", obtenerNombreRolPorId(usuario.RolID));
-                    fila.put("ESTADO", obtenerNombreEstadoPorId(usuario.EstadoUID));
-                    fila.put("ESTADOUID", usuario.EstadoUID);
+                    fila.put("ROLNOMBRE", obtenerNombreRolPorId(usuario.RolID));
+                    fila.put("ESTADONOMBRE", obtenerNombreEstadoPorId(usuario.EstadoUID));
                     resultado.add(fila);
                 }
                 return resultado;
