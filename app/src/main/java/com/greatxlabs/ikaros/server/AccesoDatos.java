@@ -184,7 +184,6 @@ public class AccesoDatos {
             System.err.println("Error al leer el archivo JSON de estados de usuario: " + e.getMessage());
             return Collections.emptyList();
         }
-        }
     }
     }
 
@@ -803,4 +802,3 @@ public class AccesoDatos {
         CallableStatement cs = con.prepareCall("{CALL VerLogs()}");
         return cs.executeQuery();
     }
-}
