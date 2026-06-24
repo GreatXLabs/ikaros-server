@@ -4,10 +4,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,6 +55,32 @@ public class AccesoDatos {
     private static final SemaforoRW jsonLock = new SemaforoRW();
 
     // -------------------------------------------------------------------------
+    // Siembra inicial de archivos JSON en DATA_DIR
+    // Copia los archivos desde el jar al volumen solo si todavía no existen.
+    // -------------------------------------------------------------------------
+
+    private static void asegurarArchivo(String nombre) throws IOException {
+        Path destino = Path.of(Configuracion.getDataDir(), nombre);
+        if (Files.exists(destino)) return;
+        Files.createDirectories(destino.getParent());
+        try (InputStream is = AccesoDatos.class.getClassLoader().getResourceAsStream(nombre)) {
+            if (is == null) throw new IOException("Recurso semilla no encontrado: " + nombre);
+            Files.copy(is, destino);
+        }
+        System.out.println("Archivo sembrado: " + destino);
+    }
+
+    static {
+        try {
+            asegurarArchivo("Usuarios.json");
+            asegurarArchivo("Roles.json");
+            asegurarArchivo("EstadosUsuarios.json");
+        } catch (IOException e) {
+            System.err.println("Error inicializando archivos de datos: " + e.getMessage());
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Clases internas de mapeo JSON
     // -------------------------------------------------------------------------
 
@@ -93,12 +121,8 @@ public class AccesoDatos {
         try {
             jsonLock.iniciarLectura();
             try {
-                InputStream is = getClass().getClassLoader().getResourceAsStream("Usuarios.json");
-                if (is == null) {
-                    System.err.println("No se encontró el archivo Usuarios.json en el classpath.");
-                    return Collections.emptyList();
-                }
-                return mapper.readValue(is, new TypeReference<List<UsuarioJson>>() {});
+                Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<UsuarioJson>>() {});
             } finally {
                 jsonLock.terminarLectura();
             }
@@ -106,38 +130,32 @@ public class AccesoDatos {
             Thread.currentThread().interrupt();
             return Collections.emptyList();
         } catch (Exception e) {
-            System.err.println("Error al leer el archivo JSON de usuarios: " + e.getMessage());
+            System.err.println("Error al leer Usuarios.json: " + e.getMessage());
             return Collections.emptyList();
         }
     }
 
-    private void escribirUsuariosEnJson(List<UsuarioJson> usuarios) {
-        try {
-            jsonLock.iniciarEscritura();
-            try {
-                File archivo = new File("src/main/resources/Usuarios.json");
-                mapper.writerWithDefaultPrettyPrinter().writeValue(archivo, usuarios);
-            } finally {
-                jsonLock.terminarEscritura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            System.err.println("Operación de escritura interrumpida: " + e.getMessage());
-        } catch (IOException e) {
-            System.err.println("Error al escribir el archivo JSON de usuarios: " + e.getMessage());
-        }
+    /**
+     * Escribe la lista de usuarios de forma atómica: escribe a un temporal en el
+     * mismo directorio y luego hace rename. Así un lector nunca ve el archivo a
+     * mitad de escritura. Debe llamarse con el lock de escritura YA tomado por
+     * el caller (ver registrarUsuario, modificarUsuario, bajaUsuario).
+     */
+    private void escribirUsuariosEnJsonSinLock(List<UsuarioJson> usuarios) throws IOException {
+        Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
+        Path tmp  = Files.createTempFile(ruta.getParent(), "Usuarios", ".tmp");
+        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), usuarios);
+        Files.move(tmp, ruta,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE);
     }
 
     private List<RolJson> leerRolesDesdeJson() {
         try {
             jsonLock.iniciarLectura();
             try {
-                InputStream is = getClass().getClassLoader().getResourceAsStream("Roles.json");
-                if (is == null) {
-                    System.err.println("No se encontró el archivo Roles.json en el classpath.");
-                    return Collections.emptyList();
-                }
-                return mapper.readValue(is, new TypeReference<List<RolJson>>() {});
+                Path ruta = Path.of(Configuracion.getDataDir(), "Roles.json");
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<RolJson>>() {});
             } finally {
                 jsonLock.terminarLectura();
             }
@@ -145,7 +163,7 @@ public class AccesoDatos {
             Thread.currentThread().interrupt();
             return Collections.emptyList();
         } catch (Exception e) {
-            System.err.println("Error al leer el archivo JSON de roles: " + e.getMessage());
+            System.err.println("Error al leer Roles.json: " + e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -154,12 +172,8 @@ public class AccesoDatos {
         try {
             jsonLock.iniciarLectura();
             try {
-                InputStream is = getClass().getClassLoader().getResourceAsStream("EstadosUsuarios.json");
-                if (is == null) {
-                    System.err.println("No se encontró el archivo EstadosUsuarios.json en el classpath.");
-                    return Collections.emptyList();
-                }
-                return mapper.readValue(is, new TypeReference<List<EstadoJson>>() {});
+                Path ruta = Path.of(Configuracion.getDataDir(), "EstadosUsuarios.json");
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoJson>>() {});
             } finally {
                 jsonLock.terminarLectura();
             }
@@ -167,7 +181,7 @@ public class AccesoDatos {
             Thread.currentThread().interrupt();
             return Collections.emptyList();
         } catch (Exception e) {
-            System.err.println("Error al leer el archivo JSON de estados de usuario: " + e.getMessage());
+            System.err.println("Error al leer EstadosUsuarios.json: " + e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -589,48 +603,72 @@ public class AccesoDatos {
     // -------------------------------------------------------------------------
 
     public void registrarUsuario(int rolID, String usuario, String nombre, String apellido, String clave) {
-        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
+        try {
+            jsonLock.iniciarEscritura();
+            try {
+                // Leer dentro del lock de escritura: ningún otro hilo puede leer ni escribir.
+                Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
+                List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<UsuarioJson>>() {});
 
-        int nuevoId = 1;
-        for (UsuarioJson u : usuarios) {
-            if (u.UsuarioID >= nuevoId) {
-                nuevoId = u.UsuarioID + 1;
+                int nuevoId = 1;
+                for (UsuarioJson u : usuarios) {
+                    if (u.UsuarioID >= nuevoId) nuevoId = u.UsuarioID + 1;
+                }
+
+                UsuarioJson nuevoUsuario = new UsuarioJson();
+                nuevoUsuario.UsuarioID = nuevoId;
+                nuevoUsuario.RolID = rolID;
+                nuevoUsuario.EstadoUID = 1;
+                nuevoUsuario.Nombre = nombre;
+                nuevoUsuario.Apellido = apellido;
+                nuevoUsuario.Usuario = usuario;
+                nuevoUsuario.Clave = clave;
+
+                usuarios.add(nuevoUsuario);
+                escribirUsuariosEnJsonSinLock(usuarios);
+            } finally {
+                jsonLock.terminarEscritura();
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Operación interrumpida al registrar usuario: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error al registrar usuario: " + e.getMessage());
         }
-
-        UsuarioJson nuevoUsuario = new UsuarioJson();
-        nuevoUsuario.UsuarioID = nuevoId;
-        nuevoUsuario.RolID = rolID;
-        nuevoUsuario.EstadoUID = 1;
-        nuevoUsuario.Nombre = nombre;
-        nuevoUsuario.Apellido = apellido;
-        nuevoUsuario.Usuario = usuario;
-        nuevoUsuario.Clave = clave;
-
-        usuarios.add(nuevoUsuario);
-        escribirUsuariosEnJson(usuarios);
     }
 
     public void modificarUsuario(int usuarioID, int rolID, String usuario, String nombre, String apellido, String clave) {
-        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
-        boolean encontrado = false;
+        try {
+            jsonLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
+                List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<UsuarioJson>>() {});
+                boolean encontrado = false;
 
-        for (UsuarioJson u : usuarios) {
-            if (u.UsuarioID == usuarioID) {
-                if (rolID != 0) u.RolID = rolID;
-                if (usuario != null && !usuario.isEmpty()) u.Usuario = usuario;
-                if (nombre != null && !nombre.isEmpty()) u.Nombre = nombre;
-                if (apellido != null && !apellido.isEmpty()) u.Apellido = apellido;
-                if (clave != null && !clave.isEmpty()) u.Clave = clave;
-                encontrado = true;
-                break;
+                for (UsuarioJson u : usuarios) {
+                    if (u.UsuarioID == usuarioID) {
+                        if (rolID != 0) u.RolID = rolID;
+                        if (usuario != null && !usuario.isEmpty()) u.Usuario = usuario;
+                        if (nombre != null && !nombre.isEmpty()) u.Nombre = nombre;
+                        if (apellido != null && !apellido.isEmpty()) u.Apellido = apellido;
+                        if (clave != null && !clave.isEmpty()) u.Clave = clave;
+                        encontrado = true;
+                        break;
+                    }
+                }
+
+                if (!encontrado) throw new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioID);
+                escribirUsuariosEnJsonSinLock(usuarios);
+            } finally {
+                jsonLock.terminarEscritura();
             }
-        }
-
-        if (encontrado) {
-            escribirUsuariosEnJson(usuarios);
-        } else {
-            throw new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioID);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Operación interrumpida al modificar usuario: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error al modificar usuario: " + e.getMessage());
         }
     }
 
@@ -646,43 +684,65 @@ public class AccesoDatos {
     }
 
     public void bajaUsuario(int usuarioID) {
-        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
-        boolean encontrado = false;
+        try {
+            jsonLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
+                List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<UsuarioJson>>() {});
+                boolean encontrado = false;
 
-        for (UsuarioJson u : usuarios) {
-            if (u.UsuarioID == usuarioID) {
-                u.EstadoUID = 2; // baja lógica → Inactivo
-                encontrado = true;
-                break;
+                for (UsuarioJson u : usuarios) {
+                    if (u.UsuarioID == usuarioID) {
+                        u.EstadoUID = 2; // baja lógica → Inactivo
+                        encontrado = true;
+                        break;
+                    }
+                }
+
+                if (!encontrado) throw new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioID);
+                escribirUsuariosEnJsonSinLock(usuarios);
+            } finally {
+                jsonLock.terminarEscritura();
             }
-        }
-
-        if (encontrado) {
-            escribirUsuariosEnJson(usuarios);
-        } else {
-            throw new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioID);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Operación interrumpida al dar de baja usuario: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error al dar de baja usuario: " + e.getMessage());
         }
     }
 
-    /** Sobrecarga por nombre para compatibilidad. Si el argumento es numérico delega al método por ID. */
+    /** Sobrecarga por nombre/ID-string para compatibilidad con Protocolo. Si el argumento es numérico delega al método por ID. */
     public void bajaUsuario(String usuarioOID) {
         try {
             bajaUsuario(Integer.parseInt(usuarioOID));
         } catch (NumberFormatException e) {
             // Búsqueda por nombre de usuario (flujo legacy)
-            List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
-            boolean encontrado = false;
-            for (UsuarioJson u : usuarios) {
-                if (u.Usuario != null && u.Usuario.equals(usuarioOID)) {
-                    u.EstadoUID = 2;
-                    encontrado = true;
-                    break;
+            try {
+                jsonLock.iniciarEscritura();
+                try {
+                    Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
+                    List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
+                            new TypeReference<List<UsuarioJson>>() {});
+                    boolean encontrado = false;
+                    for (UsuarioJson u : usuarios) {
+                        if (u.Usuario != null && u.Usuario.equals(usuarioOID)) {
+                            u.EstadoUID = 2;
+                            encontrado = true;
+                            break;
+                        }
+                    }
+                    if (!encontrado) throw new IllegalArgumentException("Usuario no encontrado: " + usuarioOID);
+                    escribirUsuariosEnJsonSinLock(usuarios);
+                } finally {
+                    jsonLock.terminarEscritura();
                 }
-            }
-            if (encontrado) {
-                escribirUsuariosEnJson(usuarios);
-            } else {
-                throw new IllegalArgumentException("Usuario no encontrado: " + usuarioOID);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                System.err.println("Operación interrumpida al dar de baja usuario: " + ie.getMessage());
+            } catch (IOException ioe) {
+                System.err.println("Error al dar de baja usuario: " + ioe.getMessage());
             }
         }
     }
