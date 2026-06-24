@@ -1,0 +1,21 @@
+    private List<UsuarioJson> leerUsuariosDesdeJson() { //CAMBIADO: nuevo método
+        try {
+            jsonLock.iniciarLectura(); //CAMBIADO: bloqueo de lectura
+            try {
+                InputStream is = getClass().getClassLoader().getResourceAsStream("Usuarios.json");
+                if (is == null) {
+                    System.err.println("No se encontró el archivo Usuarios.json en el classpath.");
+                    return Collections.emptyList();
+                }
+                return mapper.readValue(is, new TypeReference<List<UsuarioJson>>() {});
+            } finally {
+                jsonLock.terminarLectura(); //CAMBIADO: liberación de lectura
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al leer el archivo JSON de usuarios: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }

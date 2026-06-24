@@ -82,16 +82,15 @@ public class AccesoDatos {
             } finally {
                 jsonLock.terminarLectura(); //CAMBIADO: liberación de lectura
             }
-        } catch (Exception e) {
-            System.err.println("Error al leer el archivo JSON de usuarios: " + e.getMessage());
-            return Collections.emptyList();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al leer el archivo JSON de usuarios: " + e.getMessage());
+            return Collections.emptyList();
         }
     }
-
-    /**
+     /**
      * Lee todos los roles desde el archivo JSON ubicado en classpath.
      * Se protege con un SemaforoRW en modo lectura.
      *
@@ -110,11 +109,11 @@ public class AccesoDatos {
             } finally {
                 jsonLock.terminarLectura(); //CAMBIADO: liberación de lectura
             }
-        } catch (Exception e) {
-            System.err.println("Error al leer el archivo JSON de roles: " + e.getMessage());
-            return Collections.emptyList();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al leer el archivo JSON de roles: " + e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -137,7 +136,7 @@ public class AccesoDatos {
     }
 
     // --- AUTENTICACIÓN Y SESIÓN ---
-    public boolean validarLogin(String usuario, String clave) throws SQLException { //CAMBIADO: ahora usa JSON en lugar de BD
+    public boolean validarLogin(String usuario, String clave) { //CAMBIADO: ahora usa JSON en lugar de BD
         List<UsuarioJson> usuarios = leerUsuariosDesdeJson(); // lectura protegida por SemaforoRW
         for (UsuarioJson u : usuarios) {
             if (u.Usuario != null && u.Usuario.equals(usuario)
@@ -340,7 +339,7 @@ public class AccesoDatos {
         cs.setString(5, nombre);
         cs.setString(6, apellido);
         cs.setString(7, imagen);
-        cs.setDate(8, fechaNacimiento);
+        cs.setDate(8, new java.sql.Date(fechaNacimiento.getTime()));
         return cs.executeQuery();
     }
 
@@ -355,7 +354,7 @@ public class AccesoDatos {
         cs.setString(6, nombre);
         cs.setString(7, apellido);
         cs.setString(8, imagen);
-        cs.setDate(9, fechaNacimiento);
+        cs.setDate(9, new java.sql.Date(fechaNacimiento.getTime()));
         cs.execute();
     }
 
