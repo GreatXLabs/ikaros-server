@@ -205,6 +205,12 @@ public class AccesoDatos {
      * Solo se implementan los métodos que el resto del código usa realmente;
      * el resto lanza UnsupportedOperationException para detectar usos inesperados.
      */
+    // Orden de columnas que expone UsuarioResultSet (alineado con parseUsuarios del cliente):
+    // 1=ID, 2=USUARIO, 3=NOMBRE, 4=APELLIDO, 5=CLAVE, 6=ROLNOMBRE, 7=ROLID, 8=ESTADONOMBRE
+    private static final String[] COLUMNAS_USUARIO = {
+        "ID", "USUARIO", "NOMBRE", "APELLIDO", "CLAVE", "ROLNOMBRE", "ROLID", "ESTADONOMBRE"
+    };
+
     private class UsuarioResultSet implements ResultSet {
 
         private final List<Map<String, Object>> filas;
@@ -256,8 +262,13 @@ public class AccesoDatos {
             return v == null ? null : Timestamp.valueOf(v.toString());
         }
 
-        // --- Métodos por índice (no usados, implementación mínima) ---
-        @Override public String getString(int i) throws SQLException { return null; }
+        // --- Métodos por índice ---
+        @Override
+        public String getString(int i) throws SQLException {
+            if (i < 1 || i > COLUMNAS_USUARIO.length) return null;
+            Object v = filaActual().get(COLUMNAS_USUARIO[i - 1]);
+            return v == null ? null : v.toString();
+        }
         @Override public boolean getBoolean(int i) throws SQLException { return false; }
         @Override public byte getByte(int i) throws SQLException { return 0; }
         @Override public short getShort(int i) throws SQLException { return 0; }
@@ -453,33 +464,24 @@ public class AccesoDatos {
 
     private List<Map<String, Object>> obtenerUsuariosParaListar() {
         try {
-            jsonLock.iniciarLectura();
-            try {
-                List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
+            List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
 
-                List<Map<String, Object>> resultado = new ArrayList<>();
-                for (UsuarioJson usuario : usuarios) {
-                    Map<String, Object> fila = new HashMap<>();
-                    // Nombres de columna alineados con lo que devuelve el SP ListarUsuarios:
-                    // SELECT U.UsuarioID AS ID, U.Usuario, U.Nombre, U.Apellido, U.Clave,
-                    //        R.Rol AS RolNombre, R.RolID, EU.Estado AS EstadoNombre
-                    fila.put("ID", usuario.UsuarioID);
-                    fila.put("ROLID", usuario.RolID);
-                    fila.put("NOMBRE", usuario.Nombre);
-                    fila.put("APELLIDO", usuario.Apellido);
-                    fila.put("USUARIO", usuario.Usuario);
-                    fila.put("CLAVE", usuario.Clave);
-                    fila.put("ROLNOMBRE", obtenerNombreRolPorId(usuario.RolID));
-                    fila.put("ESTADONOMBRE", obtenerNombreEstadoPorId(usuario.EstadoUID));
-                    resultado.add(fila);
-                }
-                return resultado;
-            } finally {
-                jsonLock.terminarLectura();
+            List<Map<String, Object>> resultado = new ArrayList<>();
+            for (UsuarioJson usuario : usuarios) {
+                Map<String, Object> fila = new HashMap<>();
+                // Orden de columnas alineado con COLUMNAS_USUARIO:
+                // ID, USUARIO, NOMBRE, APELLIDO, CLAVE, ROLNOMBRE, ROLID, ESTADONOMBRE
+                fila.put("ID", usuario.UsuarioID);
+                fila.put("USUARIO", usuario.Usuario);
+                fila.put("NOMBRE", usuario.Nombre);
+                fila.put("APELLIDO", usuario.Apellido);
+                fila.put("CLAVE", usuario.Clave);
+                fila.put("ROLNOMBRE", obtenerNombreRolPorId(usuario.RolID));
+                fila.put("ROLID", usuario.RolID);
+                fila.put("ESTADONOMBRE", obtenerNombreEstadoPorId(usuario.EstadoUID));
+                resultado.add(fila);
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return Collections.emptyList();
+            return resultado;
         } catch (Exception e) {
             System.err.println("Error al obtener usuarios para listar: " + e.getMessage());
             return Collections.emptyList();
@@ -643,24 +645,45 @@ public class AccesoDatos {
         return "";
     }
 
-    public void bajaUsuario(String nombreUsuario) {
+    public void bajaUsuario(int usuarioID) {
         List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
-        boolean eliminado = false;
+        boolean encontrado = false;
 
-        Iterator<UsuarioJson> it = usuarios.iterator();
-        while (it.hasNext()) {
-            UsuarioJson u = it.next();
-            if (u.Usuario != null && u.Usuario.equals(nombreUsuario)) {
-                it.remove();
-                eliminado = true;
+        for (UsuarioJson u : usuarios) {
+            if (u.UsuarioID == usuarioID) {
+                u.EstadoUID = 2; // baja lógica → Inactivo
+                encontrado = true;
                 break;
             }
         }
 
-        if (eliminado) {
+        if (encontrado) {
             escribirUsuariosEnJson(usuarios);
         } else {
-            throw new IllegalArgumentException("Usuario no encontrado: " + nombreUsuario);
+            throw new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioID);
+        }
+    }
+
+    /** Sobrecarga por nombre para compatibilidad. Si el argumento es numérico delega al método por ID. */
+    public void bajaUsuario(String usuarioOID) {
+        try {
+            bajaUsuario(Integer.parseInt(usuarioOID));
+        } catch (NumberFormatException e) {
+            // Búsqueda por nombre de usuario (flujo legacy)
+            List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
+            boolean encontrado = false;
+            for (UsuarioJson u : usuarios) {
+                if (u.Usuario != null && u.Usuario.equals(usuarioOID)) {
+                    u.EstadoUID = 2;
+                    encontrado = true;
+                    break;
+                }
+            }
+            if (encontrado) {
+                escribirUsuariosEnJson(usuarios);
+            } else {
+                throw new IllegalArgumentException("Usuario no encontrado: " + usuarioOID);
+            }
         }
     }
 
