@@ -2,8 +2,16 @@ package com.greatxlabs.ikaros.server;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.sql.Connection;
 import java.sql.CallableStatement;
 import java.sql.ResultSet;
@@ -11,7 +19,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.Collections;
-import java.util.List;
 
 /**
  * Capa de acceso a datos. Todas las operaciones van por stored procedures.
@@ -63,6 +70,14 @@ public class AccesoDatos {
         public UsuarioLoginResult() {}
     }
 
+    // Clase interna para mapear el JSON de estados de usuario
+    private static class EstadoJson { //CAMBIADO: agregado para leer JSON de estados
+        public int EstadoUID;
+        public String Estado;
+
+        public EstadoJson() {}
+    }
+
     /**
      * Lee todos los usuarios desde el archivo JSON ubicado en classpath.
      * Se protege con un SemaforoRW en modo lectura para permitir concurrent reads.
@@ -88,6 +103,31 @@ public class AccesoDatos {
         } catch (Exception e) {
             System.err.println("Error al leer el archivo JSON de usuarios: " + e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Escribe la lista de usuarios al archivo JSON ubicado en classpath.
+     * Se protege con un SemaforoRW en modo escritura para acceso exclusivo.
+     *
+     * @param usuarios Lista de objetos UsuarioJson a guardar
+     */
+    private void escribirUsuariosEnJson(List<UsuarioJson> usuarios) { //CAMBIADO: nuevo método
+        try {
+            jsonLock.iniciarEscritura(); //CAMBIADO: bloqueo de escritura
+            try {
+                ObjectMapper writer = new ObjectMapper();
+                writer.enable(SerializationFeature.INDENT_OUTPUT);
+                File file = new File("src/main/resources/Usuarios.json");
+                writer.writeValue(file, usuarios);
+            } finally {
+                jsonLock.terminarEscritura(); //CAMBIADO: liberación de escritura
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            System.err.println("Error al escribir el archivo JSON de usuarios: " + e.getMessage());
         }
     }
      /**
@@ -118,6 +158,36 @@ public class AccesoDatos {
         }
     }
 
+     /**
+     * Lee todos los estados de usuario desde el archivo JSON ubicado en classpath.
+     * Se protege con un SemaforoRW en modo lectura.
+     *
+     * @return Lista de objetos EstadoJson.
+     */
+    private List<EstadoJson> leerEstadosDesdeJson() { //CAMBIADO: nuevo método
+        try {
+            jsonLock.iniciarLectura(); //CAMBIADO: bloqueo de lectura
+            try {
+                InputStream is = getClass().getClassLoader().getResourceAsStream("EstadosUsuarios.json");
+                if (is == null) {
+                    System.err.println("No se encontró el archivo EstadosUsuarios.json en el classpath.");
+                    return Collections.emptyList();
+                }
+                return mapper.readValue(is, new TypeReference<List<EstadoJson>>() {});
+            } finally {
+                jsonLock.terminarLectura(); //CAMBIADO: liberación de lectura
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al leer el archivo JSON de estados de usuario: " + e.getMessage());
+            return Collections.emptyList();
+        }
+        }
+    }
+    }
+
     /**
      * Obtiene el nombre del rol a partir de su ID, leyendo el archivo Roles.json.
      * El método internamente usa {@code leerRolesDesdeJson} que ya está protegido por SemaforoRW.
@@ -133,6 +203,201 @@ public class AccesoDatos {
             }
         }
         return null;
+    }
+
+    /**
+     * Obtiene el nombre del estado de usuario a partir de su ID, leyendo el archivo EstadosUsuarios.json.
+     * El método internamente usa {@code leerEstadosDesdeJson} que ya está protegido por SemaforoRW.
+     *
+     * @param estadoUid ID del estado de usuario.
+     * @return Nombre del estado (ej: "Activo") o null si no se encuentra.
+     */
+    private String obtenerNombreEstadoPorId(int estadoUid) { //CAMBIADO: nuevo método
+        List<EstadoJson> estados = leerEstadosDesdeJson();
+        for (EstadoJson e : estados) {
+            if (e.EstadoUID == estadoUid) {
+                return e.Estado;
+            }
+        }
+        return null;
+    }
+
+    // Clase interna para envolver la lista de usuarios como ResultSet (para compatibilidad)
+    private class UsuarioResultSet implements ResultSet { //CAMBIADO: clase adaptadora para JSON
+        private final List<Map<String, Object>> filas;
+        private int indiceActual = -1;
+
+        UsuarioResultSet(List<Map<String, Object>> filas) {
+            this.filas = filas;
+        }
+
+        @Override
+        public boolean next() throws SQLException {
+            indiceActual++;
+            return indiceActual < filas.size();
+        }
+
+        @Override
+        public Object getObject(String columnLabel) throws SQLException {
+            if (indiceActual < 0 || indiceActual >= filas.size()) {
+                throw new SQLException("No hay fila actual");
+            }
+            Map<String, Object> fila = filas.get(indiceActual);
+            return fila.get(columnLabel.toUpperCase()); // Los nombres de columna en mayúsculas
+        }
+
+        @Override
+        public String getString(String columnLabel) throws SQLException {
+            Object valor = getObject(columnLabel);
+            return valor == null ? null : valor.toString();
+        }
+
+        @Override
+        public int getInt(String columnLabel) throws SQLException {
+            Object valor = getObject(columnLabel);
+            return valor == null ? 0 : Integer.parseInt(valor.toString());
+        }
+
+        @Override
+        public Timestamp getTimestamp(String columnLabel) throws SQLException {
+            Object valor = getObject(columnLabel);
+            return valor == null ? null : Timestamp.valueOf(valor.toString());
+        }
+
+        @Override
+        public Date getDate(String columnLabel) throws SQLException {
+            Object valor = getObject(columnLabel);
+            return valor == null ? null : Date.valueOf(valor.toString());
+        }
+
+        // Métodos adicionales necesarios para ResultSet (implementaciones mínimas)
+        @Override public void close() throws SQLException {}
+        @Override public boolean wasNull() throws SQLException { return false; }
+        @Override public boolean getBoolean(String columnLabel) throws SQLException { return false; }
+        @Override public byte getByte(String columnLabel) throws SQLException { return 0; }
+        @Override public short getShort(String columnLabel) throws SQLException { return 0; }
+        @Override public long getLong(String columnLabel) throws SQLException { return 0; }
+        @Override public float getFloat(String columnLabel) throws SQLException { return 0; }
+        @Override public double getDouble(String columnLabel) throws SQLException { return 0; }
+        @Override public java.math.BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException { return null; }
+        @Override public java.math.BigDecimal getBigDecimal(String columnLabel) throws SQLException { return null; }
+        @Override public InputStream getAsciiStream(String columnLabel) throws SQLException { return null; }
+        @Override public InputStream getUnicodeStream(String columnLabel) throws SQLException { return null; }
+        @Override public InputStream getBinaryStream(String columnLabel) throws SQLException { return null; }
+        @Override public String getString(String columnLabel, int scale) throws SQLException { return getString(columnLabel); }
+        }
+        }
+        @Override public boolean getterStillValid() { return true; }
+        @Override public boolean next() throws SQLException { return false; }
+        @Override public void close() throws SQLException { }
+        @Override public boolean wasNull() throws SQLException { return false; }
+        @Override public String getString(int columnIndex) throws SQLException { return null; }
+        @Override public boolean getBoolean(int columnIndex) throws SQLException { return false; }
+        @Override public byte getByte(int columnIndex) throws SQLException { return 0; }
+        @Override public short getShort(int columnIndex) throws SQLException { return 0; }
+        @Override public int getInt(int columnIndex) throws SQLException { return 0; }
+        @Override public long getLong(int columnIndex) throws SQLException { return 0; }
+        @Override public float getFloat(int columnIndex) throws SQLException { return 0; }
+        @Override public double getDouble(int columnIndex) throws SQLException { return 0; }
+        @Override public java.math.BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException { return null; }
+        @Override public java.math.BigDecimal getBigDecimal(int columnIndex) throws SQLException { return null; }
+        @Override public InputStream getAsciiStream(int columnIndex) throws SQLException { return null; }
+        @Override public InputStream getUnicodeStream(int columnIndex) throws SQLException { return null; }
+        @Override public InputStream getBinaryStream(int columnIndex) throws SQLException { return null; }
+        @Override public SQLWarning getWarnings() { return null; }
+        @Override public void clearWarnings() throws SQLException { }
+        @Override public String getCursorName() throws SQLException { return null; }
+        @Override public boolean getMoreResults() throws SQLException { return false; }
+        @Override public boolean getMoreResults(int current) throws SQLException { return false; }
+        @Override public boolean getMoreResults(int current) throws SQLException { return false; }
+        @Override public ResultSet getGeneratedKeys() throws SQLException { return null; }
+        @Override public boolean execute(String sql) throws SQLException { return false; }
+        @Override public boolean execute(String sql, int autoGeneratedKeys) throws SQLException { return false; }
+        @Override public boolean execute(String sql, int[] columnIndexes) throws SQLException { return false; }
+        @Override public boolean execute(String sql, String[] columnNames) throws SQLException { return false; }
+        @Override public boolean executeUpdate(String sql) throws SQLException { return 0; }
+        @Override public boolean executeUpdate(String sql, int autoGeneratedKeys) throws SQLException { return 0; }
+        @Override public boolean executeUpdate(String sql, int[] columnIndexes) throws SQLException { return 0; }
+        @Override public boolean executeUpdate(String sql, String[] columnNames) throws SQLException { return 0; }
+        @Override public boolean closeOnCompletion() throws SQLException { return false; }
+        @Override public void enableCloseOnCompletion() throws SQLException { }
+        @Override public boolean isCloseOnCompletion() throws SQLException { return false; }
+        @Override public String getString(int columnIndex) throws SQLException { return null;        }
+        @Override public boolean getBoolean(int columnIndex) throws SQLException { return false; }
+        @Override public byte getByte(int columnIndex) throws SQLException { return 0; }
+        @Override public short getShort(int columnIndex) throws SQLException { return 0; }
+        @Override public int getInt(int columnIndex) throws SQLException { return 0; }
+        @Override public long getLong(int columnIndex) throws SQLException { return 0; }
+        @Override public float getFloat(int columnIndex) throws SQLException { return 0; }
+        @Override public double getDouble(int columnIndex) throws SQLException { return 0; }
+        @Override public java.math.BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException { return null; }
+        @Override public java.math.BigDecimal getBigDecimal(int columnIndex) throws SQLException { return null; }
+        @Override public InputStream getAsciiStream(int columnIndex) throws SQLException { return null; }
+        @Override public InputStream getUnicodeStream(int columnIndex) throws SQLException { return null; }
+        @Override public InputStream getBinaryStream(int columnIndex) throws SQLException { return null; }
+        @Override public Reader getCharacterStream(int columnIndex) throws SQLException { return null; }
+        @Override public Reader getCharacterStream(int columnIndex) throws SQLException { return null; }
+        @Override public Array getArray(int columnIndex) throws SQLException { return null; }
+        @Override public Array getArray(String columnLabel) throws SQLException { return null; }
+        @Override public Blob getBlob(int columnIndex) throws SQLException { return null; }
+        @Override public Blob getBlob(String columnLabel) throws SQLException { return null; }
+        @Override public Clob getClob(int columnIndex) throws SQLException { return null; }
+        @Override public Clob getClob(String columnLabel) throws SQLException { return null; }
+        @Override public Ref getRef(int columnIndex) throws SQLException { return null; }
+        @Override public Ref getRef(String columnLabel) throws SQLException { return null; }
+        @Override public RowId getRowId(int columnIndex) throws SQLException { return null; }
+        @Override public RowId getRowId(String columnLabel) throws SQLException { return null; }
+        @Override public NClob getNClob(int columnIndex) throws SQLException { return null; }
+        @Override public NClob getNClob(String columnLabel) throws SQLException { return null; }
+        @Override public SQLXML getSQLXML(int columnIndex) throws SQLException { return null; }
+        @Override public SQLXML getSQLXML(String columnLabel) throws SQLException { return null; }
+        @Override public boolean isWrapperFor(Class<?> iface) throws SQLException { return false; }
+        @Override public <T> T unwrap(Class<T> iface) throws SQLException { return null; }
+        @Override public <T> T unwrap(Class<T> iface) throws SQLException { return null; }
+        @Override public void close() throws SQLException { }
+    }
+
+    /**
+     * Obtiene los usuarios listados combinando datos de Usuarios.json, Roles.json y EstadosUsuarios.json.
+     * Se protege con SemaforoRW en modo lectura para permitir concurrent reads.
+     *
+     * @return Lista de mapas donde cada mapa representa una fila con las columnas esperadas por el ResultSet original.
+     */
+    private List<Map<String, Object>> obtenerUsuariosParaListar() { //CAMBIADO: nuevo método
+        try {
+            jsonLock.iniciarLectura(); //CAMBIADO: bloqueo de lectura
+            try {
+                List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
+                List<RolJson> roles = leerRolesDesdeJson();
+                List<EstadoJson> estados = leerEstadosDesdeJson();
+
+                List<Map<String, Object>> resultado = new ArrayList<>();
+
+                for (UsuarioJson usuario : usuarios) {
+                    Map<String, Object> fila = new HashMap<>();
+                    fila.put("USUARIOID", usuario.UsuarioID);
+                    fila.put("ROLID", usuario.RolID);
+                    fila.put("NOMBRE", usuario.Nombre);
+                    fila.put("APELLIDO", usuario.Apellido);
+                    fila.put("USUARIO", usuario.Usuario);
+                    fila.put("CLAVE", usuario.Clave);
+                    fila.put("NOMBREROL", obtenerNombreRolPorId(usuario.RolID));
+                    fila.put("ESTADO", obtenerNombreEstadoPorId(usuario.EstadoUID));
+                    fila.put("ESTADOUID", usuario.EstadoUID);
+                    resultado.add(fila);
+                }
+
+                return resultado;
+            } finally {
+                jsonLock.terminarLectura(); //CAMBIADO: liberación de lectura
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al obtener usuarios para listar: " + e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     // --- AUTENTICACIÓN Y SESIÓN ---
@@ -220,62 +485,134 @@ public class AccesoDatos {
         cs.execute();
     }
 
-    public int obtenerUsuarioID(String usuario) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
-        cs.setString(1, usuario);
-        ResultSet rs = cs.executeQuery();
-        if (rs.next()) return rs.getInt("UsuarioID");
-        throw new SQLException("Usuario no encontrado: " + usuario);
+    public int obtenerUsuarioID(String usuario) { //CAMBIADO: ahora usa JSON en lugar de BD
+        List<UsuarioJson> usuarios = leerUsuariosDesdeJson(); // lectura protegida por SemaforoRW
+        for (UsuarioJson u : usuarios) {
+            if (u.Usuario != null && u.Usuario.equals(usuario) && u.EstadoUID == 1) { // 1 = Activo
+                return u.UsuarioID;
+            }
+        }
+        throw new IllegalArgumentException("Usuario no encontrado: " + usuario);
     }
 
     // --- USUARIOS ---
-    public void registrarUsuario(int rolID, String usuario, String nombre, String apellido, String clave) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL AUsuario(?, ?, ?, ?, ?)}");
-        cs.setInt(1, rolID);
-        cs.setString(2, usuario);
-        cs.setString(3, nombre);
-        cs.setString(4, apellido);
-        cs.setString(5, clave);
-        cs.execute();
+    public void registrarUsuario(int rolID, String usuario, String nombre, String apellido, String clave) { //CAMBIADO: ahora usa JSON en lugar de BD
+        List<UsuarioJson> usuarios = leerUsuariosDesdeJson(); // lectura protegida por SemaforoRW
+
+        // Generar un nuevo ID (el máximo actual + 1)
+        int nuevoId = 1;
+        for (UsuarioJson u : usuarios) {
+            if (u.UsuarioID >= nuevoId) {
+                nuevoId = u.UsuarioID + 1;
+            }
+        }
+
+        // Crear el nuevo usuario
+        UsuarioJson nuevoUsuario = new UsuarioJson();
+        nuevoUsuario.UsuarioID = nuevoId;
+        nuevoUsuario.RolID = rolID;
+        nuevoUsuario.EstadoUID = 1; // 1 = Activo por defecto
+        nuevoUsuario.Nombre = nombre;
+        nuevoUsuario.Apellido = apellido;
+        nuevoUsuario.Usuario = usuario;
+        nuevoUsuario.Clave = clave;
+
+        usuarios.add(nuevoUsuario);
+        escribirUsuariosEnJson(usuarios); // escritura protegida por SemaforoRW
     }
 
-    public void modificarUsuario(int usuarioID, int rolID, String usuario, String nombre, String apellido, String clave) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL MUsuario(?, ?, ?, ?, ?, ?)}");
-        cs.setInt(1, usuarioID);
-        cs.setInt(2, rolID);
-        cs.setString(3, usuario);
-        cs.setString(4, nombre);
-        cs.setString(5, apellido);
-        cs.setString(6, clave);
-        cs.execute();
+    public void modificarUsuario(int usuarioID, int rolID, String usuario, String nombre, String apellido, String clave) { //CAMBIADO: ahora usa JSON en lugar de BD
+        List<UsuarioJson> usuarios = leerUsuariosDesdeJson(); // lectura protegida por SemaforoRW
+        boolean usuarioEncontrado = false;
+
+        for (UsuarioJson u : usuarios) {
+            if (u.UsuarioID == usuarioID) {
+                // Actualizar los campos proporcionados (pero solo si no son null o vacíos)
+                if (rolID != 0) { // Asumiendo que 0 significa "no cambiar"
+                    u.RolID = rolID;
+                }
+                if (usuario != null && !usuario.isEmpty()) {
+                    u.Usuario = usuario;
+                }
+                if (nombre != null && !nombre.isEmpty()) {
+                    u.Nombre = nombre;
+                }
+                if (apellido != null && !apellido.isEmpty()) {
+                    u.Apellido = apellido;
+                }
+                if (clave != null && !clave.isEmpty()) {
+                    u.Clave = clave;
+                }
+                usuarioEncontrado = true;
+                break;
+            }
+        }
+
+        if (usuarioEncontrado) {
+            escribirUsuariosEnJson(usuarios); // escritura protegida por SemaforoRW
+        } else {
+            throw new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioID);
+        }
     }
 
     // TODO: obtenerClaveUsuario expone la contrasena en texto plano — ver issue #15
     // Se elimina cuando usuarios se migre a archivos (el hashing se implementa ahi)
-    public String obtenerClaveUsuario(String usuario) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
-        cs.setString(1, usuario);
-        ResultSet rs = cs.executeQuery();
-        if (rs.next()) return rs.getString("Clave");
+    public String obtenerClaveUsuario(String usuario) { //CAMBIADO: ahora usa JSON en lugar de BD
+        List<UsuarioJson> usuarios = leerUsuariosDesdeJson(); // lectura protegida por SemaforoRW
+        for (UsuarioJson u : usuarios) {
+            if (u.Usuario != null && u.Usuario.equals(usuario) && u.EstadoUID == 1) { // 1 = Activo
+                return u.Clave;
+            }
+        }
         return "";
     }
 
-    public void bajaUsuario(String nombreUsuario) throws SQLException {
-        int usuarioID = obtenerUsuarioID(nombreUsuario);
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL BUsuario(?)}");
-        cs.setInt(1, usuarioID);
-        cs.execute();
+    public void bajaUsuario(String nombreUsuario) { //CAMBIADO: ahora usa JSON en lugar de BD
+        List<UsuarioJson> usuarios = leerUsuariosDesdeJson(); // lectura protegida por SemaforoRW
+        boolean usuarioEliminado = false;
+
+        Iterator<UsuarioJson> iterator = usuarios.iterator();
+        while (iterator.hasNext()) {
+            UsuarioJson u = iterator.next();
+            if (u.Usuario != null && u.Usuario.equals(nombreUsuario)) {
+                iterator.remove();
+                usuarioEliminado = true;
+                break;
+            }
+        }
+
+        if (usuarioEliminado) {
+            escribirUsuariosEnJson(usuarios); // escritura protegida por SemaforoRW
+        } else {
+            throw new IllegalArgumentException("Usuario no encontrado: " + nombreUsuario);
+        }
     }
 
     public ResultSet listarUsuarios() throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ListarUsuarios()}");
-        return cs.executeQuery();
+        return new UsuarioResultSet(obtenerUsuariosParaListar()); //CAMBIADO: ahora usa JSON en lugar de BD
+    }
+
+    /**
+     * Escribe la lista completa de usuarios al archivo JSON ubicado en classpath.
+     * Se protege con un SemaforoRW en modo escritura para acceso exclusivo.
+     *
+     * @param usuarios Lista de objetos UsuarioJson a guardar
+     */
+    private void escribirUsuariosEnJson(List<UsuarioJson> usuarios) { //CAMBIADO: nuevo método
+        try {
+            jsonLock.iniciarEscritura(); //CAMBIADO: bloqueo de escritura
+            try {
+                File archivo = new File("src/main/resources/Usuarios.json");
+                mapper.writerWithDefaultPrettyPrinter().writeValue(archivo, usuarios);
+            } finally {
+                jsonLock.terminarEscritura(); //CAMBIADO: liberación de escritura
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Operación de escritura interrumpida: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error al escribir el archivo JSON de usuarios: " + e.getMessage());
+        }
     }
 
     // --- MISIONES ---
