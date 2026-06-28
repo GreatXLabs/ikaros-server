@@ -33,31 +33,11 @@ import java.sql.Timestamp;
 import java.util.Date;
 import java.util.Collections;
 
-/**
- * Capa de acceso a datos. Todas las operaciones van por stored procedures.
- *
- * Patron de nombres de SP:
- *   A = Alta (registrar)   — ej: AUsuario, AMision, AEvento
- *   M = Modificacion       — ej: MUsuario, MMision
- *   B = Baja (logica)      — ej: BUsuario, BEvento
- *   + Consultas/Listas     — ej: ConsultarUsuario, ListarMisiones
- *
- * Todos los metodos obtienen conexion via ConexionBD.getConexion().
- * Los metodos que devuelven ResultSet no cierran el CallableStatement
- * internamente — queda a cargo del caller al cerrar el ResultSet.
- */
 public class AccesoDatos {
 
-    // Jackson ObjectMapper for JSON processing
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    // Semaforo para acceso concurrente a los archivos JSON
     private static final SemaforoRW jsonLock = new SemaforoRW();
-
-    // -------------------------------------------------------------------------
-    // Siembra inicial de archivos JSON en DATA_DIR
-    // Copia los archivos desde el jar al volumen solo si todavía no existen.
-    // -------------------------------------------------------------------------
 
     private static void asegurarArchivo(String nombre) throws IOException {
         Path destino = Path.of(Configuracion.getDataDir(), nombre);
@@ -79,10 +59,6 @@ public class AccesoDatos {
             System.err.println("Error inicializando archivos de datos: " + e.getMessage());
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Clases internas de mapeo JSON
-    // -------------------------------------------------------------------------
 
     private static class UsuarioJson {
         public int UsuarioID;
@@ -113,10 +89,6 @@ public class AccesoDatos {
         public EstadoJson() {}
     }
 
-    // -------------------------------------------------------------------------
-    // Lectura / escritura de archivos JSON
-    // -------------------------------------------------------------------------
-
     private List<UsuarioJson> leerUsuariosDesdeJson() {
         try {
             jsonLock.iniciarLectura();
@@ -135,12 +107,6 @@ public class AccesoDatos {
         }
     }
 
-    /**
-     * Escribe la lista de usuarios de forma atómica: escribe a un temporal en el
-     * mismo directorio y luego hace rename. Así un lector nunca ve el archivo a
-     * mitad de escritura. Debe llamarse con el lock de escritura YA tomado por
-     * el caller (ver registrarUsuario, modificarUsuario, bajaUsuario).
-     */
     private void escribirUsuariosEnJsonSinLock(List<UsuarioJson> usuarios) throws IOException {
         Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
         Path tmp  = Files.createTempFile(ruta.getParent(), "Usuarios", ".tmp");
@@ -186,10 +152,6 @@ public class AccesoDatos {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers de lookup
-    // -------------------------------------------------------------------------
-
     private String obtenerNombreRolPorId(int rolId) {
         List<RolJson> roles = leerRolesDesdeJson();
         for (RolJson r : roles) {
@@ -210,17 +172,6 @@ public class AccesoDatos {
         return null;
     }
 
-    // -------------------------------------------------------------------------
-    // Adaptador ResultSet sobre la lista de usuarios del JSON
-    // -------------------------------------------------------------------------
-
-    /**
-     * ResultSet mínimo que expone las filas construidas desde los archivos JSON.
-     * Solo se implementan los métodos que el resto del código usa realmente;
-     * el resto lanza UnsupportedOperationException para detectar usos inesperados.
-     */
-    // Orden de columnas que expone UsuarioResultSet (alineado con parseUsuarios del cliente):
-    // 1=ID, 2=USUARIO, 3=NOMBRE, 4=APELLIDO, 5=CLAVE, 6=ROLNOMBRE, 7=ROLID, 8=ESTADONOMBRE
     private static final String[] COLUMNAS_USUARIO = {
         "ID", "USUARIO", "NOMBRE", "APELLIDO", "CLAVE", "ROLNOMBRE", "ROLID", "ESTADONOMBRE"
     };
@@ -276,7 +227,6 @@ public class AccesoDatos {
             return v == null ? null : Timestamp.valueOf(v.toString());
         }
 
-        // --- Métodos por índice ---
         @Override
         public String getString(int i) throws SQLException {
             if (i < 1 || i > COLUMNAS_USUARIO.length) return null;
@@ -299,7 +249,6 @@ public class AccesoDatos {
         @Override public InputStream getUnicodeStream(int i) throws SQLException { return null; }
         @Override public InputStream getBinaryStream(int i) throws SQLException { return null; }
 
-        // --- Métodos por nombre (resto de la interfaz) ---
         @Override public boolean getBoolean(String c) throws SQLException { return false; }
         @Override public byte getByte(String c) throws SQLException { return 0; }
         @Override public short getShort(String c) throws SQLException { return 0; }
@@ -315,7 +264,6 @@ public class AccesoDatos {
         @Override public InputStream getUnicodeStream(String c) throws SQLException { return null; }
         @Override public InputStream getBinaryStream(String c) throws SQLException { return null; }
 
-        // --- Navegación y metadatos ---
         @Override public SQLWarning getWarnings() throws SQLException { return null; }
         @Override public void clearWarnings() throws SQLException {}
         @Override public String getCursorName() throws SQLException { return null; }
@@ -472,10 +420,6 @@ public class AccesoDatos {
         @Override public <T> T unwrap(Class<T> iface) throws SQLException { return null; }
     }
 
-    // -------------------------------------------------------------------------
-    // Construcción de la lista de usuarios para listar
-    // -------------------------------------------------------------------------
-
     private List<Map<String, Object>> obtenerUsuariosParaListar() {
         try {
             List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
@@ -483,8 +427,6 @@ public class AccesoDatos {
             List<Map<String, Object>> resultado = new ArrayList<>();
             for (UsuarioJson usuario : usuarios) {
                 Map<String, Object> fila = new HashMap<>();
-                // Orden de columnas alineado con COLUMNAS_USUARIO:
-                // ID, USUARIO, NOMBRE, APELLIDO, CLAVE, ROLNOMBRE, ROLID, ESTADONOMBRE
                 fila.put("ID", usuario.UsuarioID);
                 fila.put("USUARIO", usuario.Usuario);
                 fila.put("NOMBRE", usuario.Nombre);
@@ -501,10 +443,6 @@ public class AccesoDatos {
             return Collections.emptyList();
         }
     }
-
-    // -------------------------------------------------------------------------
-    // AUTENTICACIÓN Y SESIÓN
-    // -------------------------------------------------------------------------
 
     public boolean validarLogin(String usuario, String clave) {
         List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
@@ -531,17 +469,12 @@ public class AccesoDatos {
         return null;
     }
 
-    /** Mantener para compatibilidad con código que aún llama al SP. */
     public ResultSet obtenerDatosUsuario(String usuario) throws SQLException {
         Connection con = ConexionBD.getConexion();
         CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
         cs.setString(1, usuario);
         return cs.executeQuery();
     }
-
-    // -------------------------------------------------------------------------
-    // ROLES / CATÁLOGOS
-    // -------------------------------------------------------------------------
 
     public ResultSet consultarRoles() throws SQLException {
         Connection con = ConexionBD.getConexion();
@@ -573,10 +506,6 @@ public class AccesoDatos {
         return cs.executeQuery();
     }
 
-    // -------------------------------------------------------------------------
-    // REGISTROS (LOGS)
-    // -------------------------------------------------------------------------
-
     public void registrarLog(int usuarioID, int accionID, int tipoEntidadID, int entidadID) throws SQLException {
         Connection con = ConexionBD.getConexion();
         CallableStatement cs = con.prepareCall("{CALL ARegistro(?, ?, ?, ?, ?)}");
@@ -597,10 +526,6 @@ public class AccesoDatos {
         }
         throw new IllegalArgumentException("Usuario no encontrado: " + usuario);
     }
-
-    // -------------------------------------------------------------------------
-    // USUARIOS
-    // -------------------------------------------------------------------------
 
     public void registrarUsuario(int rolID, String usuario, String nombre, String apellido, String clave) {
         try {
@@ -672,7 +597,6 @@ public class AccesoDatos {
         }
     }
 
-    // TODO: obtenerClaveUsuario expone la contraseña en texto plano — ver issue #15
     public String obtenerClaveUsuario(String usuario) {
         List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
         for (UsuarioJson u : usuarios) {
@@ -713,7 +637,6 @@ public class AccesoDatos {
         }
     }
 
-    /** Sobrecarga por nombre/ID-string para compatibilidad con Protocolo. Si el argumento es numérico delega al método por ID. */
     public void bajaUsuario(String usuarioOID) {
         try {
             bajaUsuario(Integer.parseInt(usuarioOID));
@@ -750,10 +673,6 @@ public class AccesoDatos {
     public ResultSet listarUsuarios() throws SQLException {
         return new UsuarioResultSet(obtenerUsuariosParaListar());
     }
-
-    // -------------------------------------------------------------------------
-    // MISIONES
-    // -------------------------------------------------------------------------
 
     public void registrarMision(int estadoMID, String nombre, String descripcion, Timestamp ini, Timestamp fin) throws SQLException {
         Connection con = ConexionBD.getConexion();
@@ -803,10 +722,6 @@ public class AccesoDatos {
     public boolean existeMision(int id) throws SQLException {
         return consultarMision(id).next();
     }
-
-    // -------------------------------------------------------------------------
-    // TRIPULANTES
-    // -------------------------------------------------------------------------
 
     public ResultSet registrarTripulante(int estadoTID, int sexoID, int peso, int altura,
             String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
@@ -909,10 +824,6 @@ public class AccesoDatos {
         cs.setInt(1, tripulanteID);
         cs.execute();
     }
-
-    // -------------------------------------------------------------------------
-    // EVENTOS Y LOGS
-    // -------------------------------------------------------------------------
 
     public void registrarEvento(int misionID, String titulo, String desc, Timestamp fecha) throws SQLException {
         Connection con = ConexionBD.getConexion();
