@@ -38,6 +38,7 @@ public class AccesoDatos {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private static final SemaforoRW jsonLock = new SemaforoRW();
+    private static final SemaforoRW tripulanteLock = new SemaforoRW();
 
     private static void asegurarArchivo(String nombre) throws IOException {
         Path destino = Path.of(Configuracion.getDataDir(), nombre);
@@ -55,6 +56,11 @@ public class AccesoDatos {
             asegurarArchivo("Usuarios.json");
             asegurarArchivo("Roles.json");
             asegurarArchivo("EstadosUsuarios.json");
+            asegurarArchivo("Tripulantes.json");
+            asegurarArchivo("Capacidades.json");
+            asegurarArchivo("Aptitudes.json");
+            asegurarArchivo("EstadosTripulantes.json");
+            asegurarArchivo("Sexos.json");
         } catch (IOException e) {
             System.err.println("Error inicializando archivos de datos: " + e.getMessage());
         }
@@ -87,6 +93,45 @@ public class AccesoDatos {
         public int EstadoUID;
         public String Estado;
         public EstadoJson() {}
+    }
+
+    private static class TripulanteJson {
+        public int TripulanteID;
+        public int EstadoTID;
+        public int SexoID;
+        public int Peso;
+        public int Altura;
+        public String Nombre;
+        public String Apellido;
+        public String Imagen;
+        public String FechaDeNacimiento;
+        public TripulanteJson() {}
+    }
+
+    private static class CapacidadJson {
+        public int TripulanteID;
+        public int AptitudID;
+        public int Calificacion;
+        public String FechaCapacidades;
+        public CapacidadJson() {}
+    }
+
+    public static class AptitudJson {
+        public int AptitudID;
+        public String Aptitud;
+        public AptitudJson() {}
+    }
+
+    private static class EstadoTripulanteJson {
+        public int EstadoTID;
+        public String Estado;
+        public EstadoTripulanteJson() {}
+    }
+
+    private static class SexoJson {
+        public int SexoID;
+        public String Sexo;
+        public SexoJson() {}
     }
 
     private List<UsuarioJson> leerUsuariosDesdeJson() {
@@ -150,6 +195,117 @@ public class AccesoDatos {
             System.err.println("Error al leer EstadosUsuarios.json: " + e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    // --- Tripulantes: lectura/escritura JSON ---
+    private List<TripulanteJson> leerTripulantesDesdeJson() {
+        try {
+            tripulanteLock.iniciarLectura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<TripulanteJson>>() {});
+            } finally {
+                tripulanteLock.terminarLectura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al leer Tripulantes.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private void escribirTripulantesEnJsonSinLock(List<TripulanteJson> tripulantes) throws IOException {
+        Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
+        Path tmp  = Files.createTempFile(ruta.getParent(), "Tripulantes", ".tmp");
+        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), tripulantes);
+        Files.move(tmp, ruta,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE);
+    }
+
+    // --- Capacidades: lectura/escritura JSON ---
+    private List<CapacidadJson> leerCapacidadesDesdeJson() {
+        try {
+            tripulanteLock.iniciarLectura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<CapacidadJson>>() {});
+            } finally {
+                tripulanteLock.terminarLectura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al leer Capacidades.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private void escribirCapacidadesEnJsonSinLock(List<CapacidadJson> capacidades) throws IOException {
+        Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
+        Path tmp  = Files.createTempFile(ruta.getParent(), "Capacidades", ".tmp");
+        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), capacidades);
+        Files.move(tmp, ruta,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE);
+    }
+
+    // --- Referencias: solo lectura desde JSON ---
+    private List<AptitudJson> leerAptitudesDesdeJson() {
+        try {
+            Path ruta = Path.of(Configuracion.getDataDir(), "Aptitudes.json");
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<AptitudJson>>() {});
+        } catch (Exception e) {
+            System.err.println("Error al leer Aptitudes.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private List<EstadoTripulanteJson> leerEstadosTripulantesDesdeJson() {
+        try {
+            Path ruta = Path.of(Configuracion.getDataDir(), "EstadosTripulantes.json");
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoTripulanteJson>>() {});
+        } catch (Exception e) {
+            System.err.println("Error al leer EstadosTripulantes.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private List<SexoJson> leerSexosDesdeJson() {
+        try {
+            Path ruta = Path.of(Configuracion.getDataDir(), "Sexos.json");
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<SexoJson>>() {});
+        } catch (Exception e) {
+            System.err.println("Error al leer Sexos.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private String obtenerNombreEstadoTripulantePorId(int estadoTID) {
+        List<EstadoTripulanteJson> estados = leerEstadosTripulantesDesdeJson();
+        for (EstadoTripulanteJson e : estados) {
+            if (e.EstadoTID == estadoTID) return e.Estado;
+        }
+        return null;
+    }
+
+    private String obtenerNombreSexoPorId(int sexoID) {
+        List<SexoJson> sexos = leerSexosDesdeJson();
+        for (SexoJson s : sexos) {
+            if (s.SexoID == sexoID) return s.Sexo;
+        }
+        return null;
+    }
+
+    private String obtenerNombreAptitudPorId(int aptitudID) {
+        List<AptitudJson> aptitudes = leerAptitudesDesdeJson();
+        for (AptitudJson a : aptitudes) {
+            if (a.AptitudID == aptitudID) return a.Aptitud;
+        }
+        return null;
     }
 
     private String obtenerNombreRolPorId(int rolId) {
@@ -420,6 +576,233 @@ public class AccesoDatos {
         @Override public <T> T unwrap(Class<T> iface) throws SQLException { return null; }
     }
 
+    // --- ResultSet generico para consultas desde JSON ---
+    private static class SimpleResultSet implements ResultSet {
+
+        private final List<String[]> filas;
+        private final int columnas;
+        private int indiceActual = -1;
+
+        SimpleResultSet(List<String[]> filas, int columnas) {
+            this.filas = filas;
+            this.columnas = columnas;
+        }
+
+        @Override
+        public boolean next() throws SQLException {
+            indiceActual++;
+            return indiceActual < filas.size();
+        }
+
+        @Override
+        public void close() throws SQLException {}
+
+        @Override
+        public boolean wasNull() throws SQLException { return false; }
+
+        @Override
+        public String getString(int i) throws SQLException {
+            if (i < 1 || i > columnas || indiceActual < 0 || indiceActual >= filas.size()) return null;
+            return filas.get(indiceActual)[i - 1];
+        }
+
+        @Override
+        public int getInt(int i) throws SQLException {
+            String v = getString(i);
+            return v == null ? 0 : Integer.parseInt(v);
+        }
+
+        @Override
+        public boolean getBoolean(int i) throws SQLException { return false; }
+        @Override public byte getByte(int i) throws SQLException { return 0; }
+        @Override public short getShort(int i) throws SQLException { return 0; }
+        @Override public long getLong(int i) throws SQLException { return 0; }
+        @Override public float getFloat(int i) throws SQLException { return 0; }
+        @Override public double getDouble(int i) throws SQLException { return 0; }
+        @Override public java.math.BigDecimal getBigDecimal(int i, int scale) throws SQLException { return null; }
+        @Override public java.math.BigDecimal getBigDecimal(int i) throws SQLException { return null; }
+        @Override public byte[] getBytes(int i) throws SQLException { return null; }
+        @Override public java.sql.Date getDate(int i) throws SQLException { return null; }
+        @Override public java.sql.Time getTime(int i) throws SQLException { return null; }
+        @Override public Timestamp getTimestamp(int i) throws SQLException { return null; }
+        @Override public InputStream getAsciiStream(int i) throws SQLException { return null; }
+        @Override public InputStream getUnicodeStream(int i) throws SQLException { return null; }
+        @Override public InputStream getBinaryStream(int i) throws SQLException { return null; }
+
+        @Override public String getString(String c) throws SQLException { return null; }
+        @Override public boolean getBoolean(String c) throws SQLException { return false; }
+        @Override public byte getByte(String c) throws SQLException { return 0; }
+        @Override public short getShort(String c) throws SQLException { return 0; }
+        @Override public int getInt(String c) throws SQLException { return 0; }
+        @Override public long getLong(String c) throws SQLException { return 0; }
+        @Override public float getFloat(String c) throws SQLException { return 0; }
+        @Override public double getDouble(String c) throws SQLException { return 0; }
+        @Override public java.math.BigDecimal getBigDecimal(String c, int scale) throws SQLException { return null; }
+        @Override public java.math.BigDecimal getBigDecimal(String c) throws SQLException { return null; }
+        @Override public byte[] getBytes(String c) throws SQLException { return null; }
+        @Override public java.sql.Date getDate(String c) throws SQLException { return null; }
+        @Override public java.sql.Time getTime(String c) throws SQLException { return null; }
+        @Override public Timestamp getTimestamp(String c) throws SQLException { return null; }
+        @Override public InputStream getAsciiStream(String c) throws SQLException { return null; }
+        @Override public InputStream getUnicodeStream(String c) throws SQLException { return null; }
+        @Override public InputStream getBinaryStream(String c) throws SQLException { return null; }
+
+        @Override public SQLWarning getWarnings() throws SQLException { return null; }
+        @Override public void clearWarnings() throws SQLException {}
+        @Override public String getCursorName() throws SQLException { return null; }
+        @Override public ResultSetMetaData getMetaData() throws SQLException { return null; }
+        @Override public Object getObject(int i) throws SQLException { return getString(i); }
+        @Override public Object getObject(String c) throws SQLException { return null; }
+        @Override public int findColumn(String c) throws SQLException { return 0; }
+        @Override public Reader getCharacterStream(int i) throws SQLException { return null; }
+        @Override public Reader getCharacterStream(String c) throws SQLException { return null; }
+        @Override public boolean isBeforeFirst() throws SQLException { return false; }
+        @Override public boolean isAfterLast() throws SQLException { return false; }
+        @Override public boolean isFirst() throws SQLException { return false; }
+        @Override public boolean isLast() throws SQLException { return false; }
+        @Override public void beforeFirst() throws SQLException {}
+        @Override public void afterLast() throws SQLException {}
+        @Override public boolean first() throws SQLException { return false; }
+        @Override public boolean last() throws SQLException { return false; }
+        @Override public int getRow() throws SQLException { return indiceActual + 1; }
+        @Override public boolean absolute(int row) throws SQLException { return false; }
+        @Override public boolean relative(int rows) throws SQLException { return false; }
+        @Override public boolean previous() throws SQLException { return false; }
+        @Override public void setFetchDirection(int d) throws SQLException {}
+        @Override public int getFetchDirection() throws SQLException { return FETCH_FORWARD; }
+        @Override public void setFetchSize(int rows) throws SQLException {}
+        @Override public int getFetchSize() throws SQLException { return 0; }
+        @Override public int getType() throws SQLException { return TYPE_FORWARD_ONLY; }
+        @Override public int getConcurrency() throws SQLException { return CONCUR_READ_ONLY; }
+        @Override public boolean rowUpdated() throws SQLException { return false; }
+        @Override public boolean rowInserted() throws SQLException { return false; }
+        @Override public boolean rowDeleted() throws SQLException { return false; }
+        @Override public void updateNull(int i) throws SQLException {}
+        @Override public void updateBoolean(int i, boolean x) throws SQLException {}
+        @Override public void updateByte(int i, byte x) throws SQLException {}
+        @Override public void updateShort(int i, short x) throws SQLException {}
+        @Override public void updateInt(int i, int x) throws SQLException {}
+        @Override public void updateLong(int i, long x) throws SQLException {}
+        @Override public void updateFloat(int i, float x) throws SQLException {}
+        @Override public void updateDouble(int i, double x) throws SQLException {}
+        @Override public void updateBigDecimal(int i, java.math.BigDecimal x) throws SQLException {}
+        @Override public void updateString(int i, String x) throws SQLException {}
+        @Override public void updateBytes(int i, byte[] x) throws SQLException {}
+        @Override public void updateDate(int i, java.sql.Date x) throws SQLException {}
+        @Override public void updateTime(int i, java.sql.Time x) throws SQLException {}
+        @Override public void updateTimestamp(int i, Timestamp x) throws SQLException {}
+        @Override public void updateAsciiStream(int i, InputStream x, int l) throws SQLException {}
+        @Override public void updateBinaryStream(int i, InputStream x, int l) throws SQLException {}
+        @Override public void updateCharacterStream(int i, Reader x, int l) throws SQLException {}
+        @Override public void updateObject(int i, Object x, int s) throws SQLException {}
+        @Override public void updateObject(int i, Object x) throws SQLException {}
+        @Override public void updateNull(String c) throws SQLException {}
+        @Override public void updateBoolean(String c, boolean x) throws SQLException {}
+        @Override public void updateByte(String c, byte x) throws SQLException {}
+        @Override public void updateShort(String c, short x) throws SQLException {}
+        @Override public void updateInt(String c, int x) throws SQLException {}
+        @Override public void updateLong(String c, long x) throws SQLException {}
+        @Override public void updateFloat(String c, float x) throws SQLException {}
+        @Override public void updateDouble(String c, double x) throws SQLException {}
+        @Override public void updateBigDecimal(String c, java.math.BigDecimal x) throws SQLException {}
+        @Override public void updateString(String c, String x) throws SQLException {}
+        @Override public void updateBytes(String c, byte[] x) throws SQLException {}
+        @Override public void updateDate(String c, java.sql.Date x) throws SQLException {}
+        @Override public void updateTime(String c, java.sql.Time x) throws SQLException {}
+        @Override public void updateTimestamp(String c, Timestamp x) throws SQLException {}
+        @Override public void updateAsciiStream(String c, InputStream x, int l) throws SQLException {}
+        @Override public void updateBinaryStream(String c, InputStream x, int l) throws SQLException {}
+        @Override public void updateCharacterStream(String c, Reader x, int l) throws SQLException {}
+        @Override public void updateObject(String c, Object x, int s) throws SQLException {}
+        @Override public void updateObject(String c, Object x) throws SQLException {}
+        @Override public void insertRow() throws SQLException {}
+        @Override public void updateRow() throws SQLException {}
+        @Override public void deleteRow() throws SQLException {}
+        @Override public void refreshRow() throws SQLException {}
+        @Override public void cancelRowUpdates() throws SQLException {}
+        @Override public void moveToInsertRow() throws SQLException {}
+        @Override public void moveToCurrentRow() throws SQLException {}
+        @Override public Statement getStatement() throws SQLException { return null; }
+        @Override public Object getObject(int i, Map<String, Class<?>> m) throws SQLException { return null; }
+        @Override public Ref getRef(int i) throws SQLException { return null; }
+        @Override public Blob getBlob(int i) throws SQLException { return null; }
+        @Override public Clob getClob(int i) throws SQLException { return null; }
+        @Override public Array getArray(int i) throws SQLException { return null; }
+        @Override public Object getObject(String c, Map<String, Class<?>> m) throws SQLException { return null; }
+        @Override public Ref getRef(String c) throws SQLException { return null; }
+        @Override public Blob getBlob(String c) throws SQLException { return null; }
+        @Override public Clob getClob(String c) throws SQLException { return null; }
+        @Override public Array getArray(String c) throws SQLException { return null; }
+        @Override public java.sql.Date getDate(int i, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public java.sql.Date getDate(String c, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public java.sql.Time getTime(int i, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public java.sql.Time getTime(String c, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public Timestamp getTimestamp(int i, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public Timestamp getTimestamp(String c, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public java.net.URL getURL(int i) throws SQLException { return null; }
+        @Override public java.net.URL getURL(String c) throws SQLException { return null; }
+        @Override public void updateRef(int i, Ref x) throws SQLException {}
+        @Override public void updateRef(String c, Ref x) throws SQLException {}
+        @Override public void updateBlob(int i, Blob x) throws SQLException {}
+        @Override public void updateBlob(String c, Blob x) throws SQLException {}
+        @Override public void updateClob(int i, Clob x) throws SQLException {}
+        @Override public void updateClob(String c, Clob x) throws SQLException {}
+        @Override public void updateArray(int i, Array x) throws SQLException {}
+        @Override public void updateArray(String c, Array x) throws SQLException {}
+        @Override public RowId getRowId(int i) throws SQLException { return null; }
+        @Override public RowId getRowId(String c) throws SQLException { return null; }
+        @Override public void updateRowId(int i, RowId x) throws SQLException {}
+        @Override public void updateRowId(String c, RowId x) throws SQLException {}
+        @Override public int getHoldability() throws SQLException { return HOLD_CURSORS_OVER_COMMIT; }
+        @Override public boolean isClosed() throws SQLException { return false; }
+        @Override public void updateNString(int i, String x) throws SQLException {}
+        @Override public void updateNString(String c, String x) throws SQLException {}
+        @Override public void updateNClob(int i, NClob x) throws SQLException {}
+        @Override public void updateNClob(String c, NClob x) throws SQLException {}
+        @Override public NClob getNClob(int i) throws SQLException { return null; }
+        @Override public NClob getNClob(String c) throws SQLException { return null; }
+        @Override public SQLXML getSQLXML(int i) throws SQLException { return null; }
+        @Override public SQLXML getSQLXML(String c) throws SQLException { return null; }
+        @Override public void updateSQLXML(int i, SQLXML x) throws SQLException {}
+        @Override public void updateSQLXML(String c, SQLXML x) throws SQLException {}
+        @Override public String getNString(int i) throws SQLException { return null; }
+        @Override public String getNString(String c) throws SQLException { return null; }
+        @Override public Reader getNCharacterStream(int i) throws SQLException { return null; }
+        @Override public Reader getNCharacterStream(String c) throws SQLException { return null; }
+        @Override public void updateNCharacterStream(int i, Reader x, long l) throws SQLException {}
+        @Override public void updateNCharacterStream(String c, Reader x, long l) throws SQLException {}
+        @Override public void updateAsciiStream(int i, InputStream x, long l) throws SQLException {}
+        @Override public void updateBinaryStream(int i, InputStream x, long l) throws SQLException {}
+        @Override public void updateCharacterStream(int i, Reader x, long l) throws SQLException {}
+        @Override public void updateAsciiStream(String c, InputStream x, long l) throws SQLException {}
+        @Override public void updateBinaryStream(String c, InputStream x, long l) throws SQLException {}
+        @Override public void updateCharacterStream(String c, Reader x, long l) throws SQLException {}
+        @Override public void updateBlob(int i, InputStream x, long l) throws SQLException {}
+        @Override public void updateBlob(String c, InputStream x, long l) throws SQLException {}
+        @Override public void updateClob(int i, Reader x, long l) throws SQLException {}
+        @Override public void updateClob(String c, Reader x, long l) throws SQLException {}
+        @Override public void updateNClob(int i, Reader x, long l) throws SQLException {}
+        @Override public void updateNClob(String c, Reader x, long l) throws SQLException {}
+        @Override public void updateNCharacterStream(int i, Reader x) throws SQLException {}
+        @Override public void updateNCharacterStream(String c, Reader x) throws SQLException {}
+        @Override public void updateAsciiStream(int i, InputStream x) throws SQLException {}
+        @Override public void updateBinaryStream(int i, InputStream x) throws SQLException {}
+        @Override public void updateCharacterStream(int i, Reader x) throws SQLException {}
+        @Override public void updateAsciiStream(String c, InputStream x) throws SQLException {}
+        @Override public void updateBinaryStream(String c, InputStream x) throws SQLException {}
+        @Override public void updateCharacterStream(String c, Reader x) throws SQLException {}
+        @Override public void updateBlob(int i, InputStream x) throws SQLException {}
+        @Override public void updateBlob(String c, InputStream x) throws SQLException {}
+        @Override public void updateClob(int i, Reader x) throws SQLException {}
+        @Override public void updateClob(String c, Reader x) throws SQLException {}
+        @Override public void updateNClob(int i, Reader x) throws SQLException {}
+        @Override public void updateNClob(String c, Reader x) throws SQLException {}
+        @Override public <T> T getObject(int i, Class<T> t) throws SQLException { return null; }
+        @Override public <T> T getObject(String c, Class<T> t) throws SQLException { return null; }
+        @Override public boolean isWrapperFor(Class<?> iface) throws SQLException { return false; }
+        @Override public <T> T unwrap(Class<T> iface) throws SQLException { return null; }
+    }
+
     private List<Map<String, Object>> obtenerUsuariosParaListar() {
         try {
             List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
@@ -482,10 +865,13 @@ public class AccesoDatos {
         return cs.executeQuery();
     }
 
-    public ResultSet consultarAptitudes() throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ListarAptitudes()}");
-        return cs.executeQuery();
+    public ResultSet consultarAptitudes() {
+        List<AptitudJson> aptitudes = leerAptitudesDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (AptitudJson a : aptitudes) {
+            filas.add(new String[]{String.valueOf(a.AptitudID), a.Aptitud});
+        }
+        return new SimpleResultSet(filas, 2);
     }
 
     public ResultSet listarEstadosMision() throws SQLException {
@@ -494,10 +880,13 @@ public class AccesoDatos {
         return cs.executeQuery();
     }
 
-    public ResultSet listarEstadosTripulante() throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ListarEstadosTripulantes()}");
-        return cs.executeQuery();
+    public ResultSet listarEstadosTripulante() {
+        List<EstadoTripulanteJson> estados = leerEstadosTripulantesDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (EstadoTripulanteJson e : estados) {
+            filas.add(new String[]{String.valueOf(e.EstadoTID), e.Estado});
+        }
+        return new SimpleResultSet(filas, 2);
     }
 
     public ResultSet listarEstadosEvento() throws SQLException {
@@ -724,41 +1113,110 @@ public class AccesoDatos {
     }
 
     public ResultSet registrarTripulante(int estadoTID, int sexoID, int peso, int altura,
-            String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ATripulante(?, ?, ?, ?, ?, ?, ?, ?)}");
-        cs.setInt(1, estadoTID);
-        cs.setInt(2, sexoID);
-        cs.setInt(3, peso);
-        cs.setInt(4, altura);
-        cs.setString(5, nombre);
-        cs.setString(6, apellido);
-        cs.setString(7, imagen);
-        cs.setDate(8, new java.sql.Date(fechaNacimiento.getTime()));
-        return cs.executeQuery();
+            String nombre, String apellido, String imagen, Date fechaNacimiento) {
+        try {
+            tripulanteLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
+                List<TripulanteJson> tripulantes = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<TripulanteJson>>() {});
+
+                int nuevoId = 1;
+                for (TripulanteJson t : tripulantes) {
+                    if (t.TripulanteID >= nuevoId) nuevoId = t.TripulanteID + 1;
+                }
+
+                TripulanteJson nuevo = new TripulanteJson();
+                nuevo.TripulanteID = nuevoId;
+                nuevo.EstadoTID = estadoTID;
+                nuevo.SexoID = sexoID;
+                nuevo.Peso = peso;
+                nuevo.Altura = altura;
+                nuevo.Nombre = nombre;
+                nuevo.Apellido = apellido;
+                nuevo.Imagen = imagen;
+                nuevo.FechaDeNacimiento = fechaNacimiento.toString();
+
+                tripulantes.add(nuevo);
+                escribirTripulantesEnJsonSinLock(tripulantes);
+
+                List<String[]> filas = new ArrayList<>();
+                filas.add(new String[]{String.valueOf(nuevoId)});
+                return new SimpleResultSet(filas, 1);
+            } finally {
+                tripulanteLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            List<String[]> filas = new ArrayList<>();
+            filas.add(new String[]{"-1"});
+            return new SimpleResultSet(filas, 1);
+        } catch (IOException e) {
+            System.err.println("Error al registrar tripulante: " + e.getMessage());
+            return new SimpleResultSet(new ArrayList<>(), 1);
+        }
     }
 
     public void modificarTripulante(int tripulanteID, int estadoTID, int sexoID, int peso, int altura,
-            String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL MTripulante(?, ?, ?, ?, ?, ?, ?, ?, ?)}");
-        cs.setInt(1, tripulanteID);
-        cs.setInt(2, estadoTID);
-        cs.setInt(3, sexoID);
-        cs.setInt(4, peso);
-        cs.setInt(5, altura);
-        cs.setString(6, nombre);
-        cs.setString(7, apellido);
-        cs.setString(8, imagen);
-        cs.setDate(9, new java.sql.Date(fechaNacimiento.getTime()));
-        cs.execute();
+            String nombre, String apellido, String imagen, Date fechaNacimiento) {
+        try {
+            tripulanteLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
+                List<TripulanteJson> tripulantes = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<TripulanteJson>>() {});
+
+                for (TripulanteJson t : tripulantes) {
+                    if (t.TripulanteID == tripulanteID) {
+                        t.EstadoTID = estadoTID;
+                        t.SexoID = sexoID;
+                        t.Peso = peso;
+                        t.Altura = altura;
+                        t.Nombre = nombre;
+                        t.Apellido = apellido;
+                        t.Imagen = imagen;
+                        t.FechaDeNacimiento = fechaNacimiento.toString();
+                        break;
+                    }
+                }
+
+                escribirTripulantesEnJsonSinLock(tripulantes);
+            } finally {
+                tripulanteLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Operación interrumpida al modificar tripulante: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error al modificar tripulante: " + e.getMessage());
+        }
     }
 
-    public void bajaTripulante(int tripulanteID) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL BTripulante(?)}");
-        cs.setInt(1, tripulanteID);
-        cs.execute();
+    public void bajaTripulante(int tripulanteID) {
+        try {
+            tripulanteLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
+                List<TripulanteJson> tripulantes = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<TripulanteJson>>() {});
+
+                for (TripulanteJson t : tripulantes) {
+                    if (t.TripulanteID == tripulanteID) {
+                        t.EstadoTID = 3; // Retirado
+                        break;
+                    }
+                }
+
+                escribirTripulantesEnJsonSinLock(tripulantes);
+            } finally {
+                tripulanteLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Operación interrumpida al dar de baja tripulante: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error al dar de baja tripulante: " + e.getMessage());
+        }
     }
 
     public void asignarTripulante(int tripID, int misID, Timestamp fecha) throws SQLException {
@@ -770,10 +1228,22 @@ public class AccesoDatos {
         cs.execute();
     }
 
-    public ResultSet listarTripulantes() throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ListarTripulantes()}");
-        return cs.executeQuery();
+    public ResultSet listarTripulantes() {
+        List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (TripulanteJson t : tripulantes) {
+            filas.add(new String[]{
+                String.valueOf(t.TripulanteID),
+                t.Nombre != null ? t.Nombre : "",
+                t.Apellido != null ? t.Apellido : "",
+                t.Imagen != null ? t.Imagen : "",
+                obtenerNombreEstadoTripulantePorId(t.EstadoTID),
+                obtenerNombreSexoPorId(t.SexoID),
+                String.valueOf(t.Peso),
+                String.valueOf(t.Altura)
+            });
+        }
+        return new SimpleResultSet(filas, 8);
     }
 
     public ResultSet listarTripulantesMision(int misionID) throws SQLException {
@@ -790,39 +1260,97 @@ public class AccesoDatos {
         return cs.executeQuery();
     }
 
-    public ResultSet consultarTripulante(int tripulanteID) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ConsultarTripulante(?)}");
-        cs.setInt(1, tripulanteID);
-        return cs.executeQuery();
+    public ResultSet consultarTripulante(int tripulanteID) {
+        List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
+        for (TripulanteJson t : tripulantes) {
+            if (t.TripulanteID == tripulanteID) {
+                List<String[]> filas = new ArrayList<>();
+                filas.add(new String[]{
+                    String.valueOf(t.TripulanteID),
+                    t.Nombre != null ? t.Nombre : "",
+                    t.Apellido != null ? t.Apellido : "",
+                    String.valueOf(t.Peso),
+                    String.valueOf(t.Altura),
+                    t.Imagen != null ? t.Imagen : "",
+                    t.FechaDeNacimiento != null ? t.FechaDeNacimiento : "",
+                    obtenerNombreEstadoTripulantePorId(t.EstadoTID),
+                    obtenerNombreSexoPorId(t.SexoID)
+                });
+                return new SimpleResultSet(filas, 9);
+            }
+        }
+        return new SimpleResultSet(new ArrayList<>(), 9);
     }
 
-    public boolean existeTripulante(int id) throws SQLException {
-        return consultarTripulante(id).next();
+    public boolean existeTripulante(int id) {
+        List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
+        for (TripulanteJson t : tripulantes) {
+            if (t.TripulanteID == id) return true;
+        }
+        return false;
     }
 
-    public ResultSet consultarCapacidades(int tripulanteID) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ConsultarCapacidades(?)}");
-        cs.setInt(1, tripulanteID);
-        return cs.executeQuery();
+    public ResultSet consultarCapacidades(int tripulanteID) {
+        List<CapacidadJson> capacidades = leerCapacidadesDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (CapacidadJson c : capacidades) {
+            if (c.TripulanteID == tripulanteID) {
+                filas.add(new String[]{
+                    String.valueOf(c.AptitudID),
+                    obtenerNombreAptitudPorId(c.AptitudID),
+                    String.valueOf(c.Calificacion),
+                    c.FechaCapacidades != null ? c.FechaCapacidades : ""
+                });
+            }
+        }
+        return new SimpleResultSet(filas, 4);
     }
 
-    public void registrarCapacidad(int tripulanteID, int aptitudID, int calificacion, String fecha) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL RegistrarCapacidad(?, ?, ?, ?)}");
-        cs.setInt(1, tripulanteID);
-        cs.setInt(2, aptitudID);
-        cs.setInt(3, calificacion);
-        cs.setString(4, fecha);
-        cs.execute();
+    public void registrarCapacidad(int tripulanteID, int aptitudID, int calificacion, String fecha) {
+        try {
+            tripulanteLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
+                List<CapacidadJson> capacidades = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<CapacidadJson>>() {});
+
+                CapacidadJson nueva = new CapacidadJson();
+                nueva.TripulanteID = tripulanteID;
+                nueva.AptitudID = aptitudID;
+                nueva.Calificacion = calificacion;
+                nueva.FechaCapacidades = fecha;
+
+                capacidades.add(nueva);
+                escribirCapacidadesEnJsonSinLock(capacidades);
+            } finally {
+                tripulanteLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Operación interrumpida al registrar capacidad: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error al registrar capacidad: " + e.getMessage());
+        }
     }
 
-    public void eliminarCapacidades(int tripulanteID) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL EliminarCapacidades(?)}");
-        cs.setInt(1, tripulanteID);
-        cs.execute();
+    public void eliminarCapacidades(int tripulanteID) {
+        try {
+            tripulanteLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
+                List<CapacidadJson> capacidades = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<CapacidadJson>>() {});
+                capacidades.removeIf(c -> c.TripulanteID == tripulanteID);
+                escribirCapacidadesEnJsonSinLock(capacidades);
+            } finally {
+                tripulanteLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Operación interrumpida al eliminar capacidades: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error al eliminar capacidades: " + e.getMessage());
+        }
     }
 
     public void registrarEvento(int misionID, String titulo, String desc, Timestamp fecha) throws SQLException {
