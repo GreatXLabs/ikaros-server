@@ -17,6 +17,8 @@ import io.github.cdimascio.dotenv.Dotenv;
  *   DB_NAME       nombre de la base de datos (default: ikaros)
  *   DB_USER       usuario de la base de datos (default: root)
  *   DB_PASSWORD   contrasena de la base de datos (default: vacio)
+ *   DATA_DIR      directorio donde se guardan los JSON (default: data)
+ *                 En Dokploy apuntar al volumen montado, ej: /app/data
  */
 public class Configuracion {
 
@@ -49,5 +51,15 @@ public class Configuracion {
 
 	public static String getDbPassword() {
 		return get("DB_PASSWORD", "");
+	}
+
+
+	/**
+	 * Directorio donde se leen y escriben los archivos JSON de usuarios.
+	 * Default "data" (relativo al working dir) para correr local.
+	 * En Dokploy setear DATA_DIR=/app/data apuntando al volumen montado.
+	 */
+	public static String getDataDir() {
+		return get("DATA_DIR", "data");
 	}
 }

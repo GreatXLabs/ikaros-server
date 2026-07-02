@@ -1,0 +1,48 @@
+package com.greatxlabs.ikaros.server;
+
+import java.util.concurrent.Semaphore;
+
+/**
+ * Semaforo Readers-Writers usando semaforos de Java.
+ *
+ * Multiples lectores acceden en paralelo; una escritura requiere acceso exclusivo.
+ * Un semaforo de turno evita starvation de escritores: cuando un escritor espera,
+ * los nuevos lectores se bloquean en el turno hasta que el escritor termine.
+ */
+public class SemaforoRW {
+
+    private final Semaphore mutex = new Semaphore(1);
+    private final Semaphore recurso = new Semaphore(1, true);
+    private final Semaphore turno = new Semaphore(1, true);
+    private int lectoresActivos = 0;
+
+    public void iniciarLectura() throws InterruptedException {
+        turno.acquire();
+        mutex.acquire();
+        lectoresActivos++;
+        if (lectoresActivos == 1) {
+            recurso.acquire();
+        }
+        mutex.release();
+        turno.release();
+    }
+
+    public void terminarLectura() throws InterruptedException {
+        mutex.acquire();
+        lectoresActivos--;
+        if (lectoresActivos == 0) {
+            recurso.release();
+        }
+        mutex.release();
+    }
+
+    public void iniciarEscritura() throws InterruptedException {
+        turno.acquire();
+        recurso.acquire();
+    }
+
+    public void terminarEscritura() {
+        recurso.release();
+        turno.release();
+    }
+}

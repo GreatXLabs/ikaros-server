@@ -1,0 +1,47 @@
+[
+  {
+    "UsuarioID": 1,
+    "RolID": 1,
+    "EstadoUID": 1,
+    "Nombre": "Jefe",
+    "Apellido": "Jefe",
+    "Usuario": "Jefe",
+    "Clave": "Jefe123"
+  },
+  {
+    "UsuarioID": 2,
+    "RolID": 2,
+    "EstadoUID": 1,
+    "Nombre": "RRHH",
+    "Apellido": "RRHH",
+    "Usuario": "RRHH",
+    "Clave": "RRHH123"
+  },
+  {
+    "UsuarioID": 3,
+    "RolID": 3,
+    "EstadoUID": 1,
+    "Nombre": "Asignador",
+    "Apellido": "Asignador",
+    "Usuario": "Asignador",
+    "Clave": "Asignador123"
+  },
+  {
+    "UsuarioID": 4,
+    "RolID": 4,
+    "EstadoUID": 1,
+    "Nombre": "Coordinador",
+    "Apellido": "Coordinador",
+    "Usuario": "Coordinador",
+    "Clave": "Coordinador123"
+  },
+  {
+    "UsuarioID": 5,
+    "RolID": 5,
+    "EstadoUID": 1,
+    "Nombre": "Registrador",
+    "Apellido": "Registrador",
+    "Usuario": "Registrador",
+    "Clave": "Registrador123"
+  }
+]

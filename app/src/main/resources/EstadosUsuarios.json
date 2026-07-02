@@ -1,0 +1,10 @@
+[
+  {
+    "EstadoUID": 1,
+    "Estado": "Activo"
+  },
+  {
+    "EstadoUID": 2,
+    "Estado": "Inactivo"
+  }
+]

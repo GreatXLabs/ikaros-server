@@ -37,12 +37,20 @@ public class Protocolo {
 	}
 
 	public String procesar(String solicitud) {
+		String resultado = procesarInterno(solicitud);
+		LogSistema.registrar("RESULTADO " + resultado);
+		return resultado;
+	}
+
+	private String procesarInterno(String solicitud) {
 		if (solicitud == null || solicitud.isEmpty()) {
 			return "ERROR|E99|Error interno del servidor";
 		}
 
 		String[] partes = solicitud.split("\\|", -1);
 		String operacion = partes[0].toUpperCase();
+		String tokenLog = partes.length > 1 ? partes[1] : "-";
+		LogSistema.registrar("OPERACION " + operacion + " token=" + tokenLog);
 
 		if (operacion.equals("LOGIN")) {
 			return manejarLogin(partes);
@@ -131,8 +139,8 @@ public class Protocolo {
 
 	// --- USUARIOS ---
 	// REGISTRAR_USUARIO|token|usuario|clave|nombre|apellido|rol
-	// MODIFICAR_USUARIO|token|usuario|clave|nombre|apellido|rol   (clave vacía = no modificar)
-	// BAJA_USUARIO|token|usuario
+	// MODIFICAR_USUARIO|token|id|usuario|clave|nombre|apellido|rol   (clave vacía = no modificar)
+	// BAJA_USUARIO|token|id
 	// LISTAR_USUARIOS|token
 	private String manejarUsuarios(String operacion, String[] partes) throws SQLException {
 		switch (operacion) {
@@ -147,15 +155,13 @@ public class Protocolo {
 			return "OK|Usuario registrado";
 		}
 		case "MODIFICAR_USUARIO": {
-			if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
-			String usuario = partes[2];
-			// TODO: obtenerClaveUsuario expone la contrasena en texto plano (issue #15).
-			// Se resuelve cuando usuarios se migre a archivos.
-			String clave = partes[3].isEmpty() ? accesoDatos.obtenerClaveUsuario(usuario) : partes[3];
-			String nombre = partes[4];
-			String apellido = partes[5];
-			String rol = partes[6];
-			int usuarioID = accesoDatos.obtenerUsuarioID(usuario);
+			if (partes.length < 8) return "ERROR|E99|Parámetros insuficientes";
+			int usuarioID = parseEntero(partes[2], "usuarioID");
+			String usuario = partes[3];
+			String clave = partes[4].isEmpty() ? accesoDatos.obtenerClaveUsuario(usuario) : partes[4];
+			String nombre = partes[5];
+			String apellido = partes[6];
+			String rol = partes[7];
 			accesoDatos.modificarUsuario(usuarioID, CacheMaestra.getRolID(rol), usuario, nombre, apellido, clave);
 			return "OK|Usuario modificado";
 		}
@@ -165,7 +171,7 @@ public class Protocolo {
 			return "OK|Usuario dado de baja";
 		}
 		case "LISTAR_USUARIOS":
-			return formatearLista(accesoDatos.listarUsuarios(), 7);
+			return formatearLista(accesoDatos.listarUsuarios(), 8);
 		default:
 			return "ERROR|E01|Permiso insuficiente para esta operación";
 		}
