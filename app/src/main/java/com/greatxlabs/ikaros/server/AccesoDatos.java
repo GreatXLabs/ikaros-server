@@ -39,6 +39,7 @@ public class AccesoDatos {
 
     private static final SemaforoRW jsonLock = new SemaforoRW();
     private static final SemaforoRW tripulanteLock = new SemaforoRW();
+    private static final SemaforoRW misionLock = new SemaforoRW();
 
     private static void asegurarArchivo(String nombre) throws IOException {
         Path destino = Path.of(Configuracion.getDataDir(), nombre);
@@ -61,6 +62,9 @@ public class AccesoDatos {
             asegurarArchivo("Aptitudes.json");
             asegurarArchivo("EstadosTripulantes.json");
             asegurarArchivo("Sexos.json");
+            asegurarArchivo("Misiones.json");
+            asegurarArchivo("EstadosMisiones.json");
+            asegurarArchivo("GrupoMisiones.json");
         } catch (IOException e) {
             System.err.println("Error inicializando archivos de datos: " + e.getMessage());
         }
@@ -134,6 +138,31 @@ public class AccesoDatos {
         public SexoJson() {}
     }
 
+    private static class MisionJson {
+        public int MisionID;
+        public int EstadoMID;
+        public Integer RetrasoInicio;
+        public String FechaInicioEstimada;
+        public String FechaFinEstimada;
+        public Integer RetrasoFin;
+        public String Nombre;
+        public String Descripcion;
+        public MisionJson() {}
+    }
+
+    private static class EstadoMisionJson {
+        public int EstadoMID;
+        public String Estado;
+        public EstadoMisionJson() {}
+    }
+
+    private static class GrupoMisionJson {
+        public int TripulanteID;
+        public int MisionID;
+        public String FechaAsignacion;
+        public GrupoMisionJson() {}
+    }
+
     private List<UsuarioJson> leerUsuariosDesdeJson() {
         try {
             jsonLock.iniciarLectura();
@@ -197,7 +226,6 @@ public class AccesoDatos {
         }
     }
 
-    // --- Tripulantes: lectura/escritura JSON ---
     private List<TripulanteJson> leerTripulantesDesdeJson() {
         try {
             tripulanteLock.iniciarLectura();
@@ -225,7 +253,6 @@ public class AccesoDatos {
                 StandardCopyOption.ATOMIC_MOVE);
     }
 
-    // --- Capacidades: lectura/escritura JSON ---
     private List<CapacidadJson> leerCapacidadesDesdeJson() {
         try {
             tripulanteLock.iniciarLectura();
@@ -253,7 +280,6 @@ public class AccesoDatos {
                 StandardCopyOption.ATOMIC_MOVE);
     }
 
-    // --- Referencias: solo lectura desde JSON ---
     private List<AptitudJson> leerAptitudesDesdeJson() {
         try {
             Path ruta = Path.of(Configuracion.getDataDir(), "Aptitudes.json");
@@ -272,6 +298,70 @@ public class AccesoDatos {
             System.err.println("Error al leer EstadosTripulantes.json: " + e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    private List<MisionJson> leerMisionesDesdeJson() {
+        try {
+            misionLock.iniciarLectura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
+            } finally {
+                misionLock.terminarLectura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al leer Misiones.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private void escribirMisionesEnJsonSinLock(List<MisionJson> misiones) throws IOException {
+        Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
+        Path tmp = Files.createTempFile(ruta.getParent(), "Misiones", ".tmp");
+        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), misiones);
+        Files.move(tmp, ruta,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE);
+    }
+
+    private List<EstadoMisionJson> leerEstadosMisionDesdeJson() {
+        try {
+            Path ruta = Path.of(Configuracion.getDataDir(), "EstadosMisiones.json");
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoMisionJson>>() {});
+        } catch (Exception e) {
+            System.err.println("Error al leer EstadosMisiones.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private List<GrupoMisionJson> leerGrupoMisionesDesdeJson() {
+        try {
+            misionLock.iniciarLectura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "GrupoMisiones.json");
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<GrupoMisionJson>>() {});
+            } finally {
+                misionLock.terminarLectura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al leer GrupoMisiones.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private void escribirGrupoMisionesEnJsonSinLock(List<GrupoMisionJson> grupos) throws IOException {
+        Path ruta = Path.of(Configuracion.getDataDir(), "GrupoMisiones.json");
+        Path tmp = Files.createTempFile(ruta.getParent(), "GrupoMisiones", ".tmp");
+        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), grupos);
+        Files.move(tmp, ruta,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE);
     }
 
     private List<SexoJson> leerSexosDesdeJson() {
@@ -326,6 +416,19 @@ public class AccesoDatos {
             }
         }
         return null;
+    }
+
+    private String obtenerNombreEstadoMisionPorId(int estadoMID) {
+        List<EstadoMisionJson> estados = leerEstadosMisionDesdeJson();
+        for (EstadoMisionJson e : estados) {
+            if (e.EstadoMID == estadoMID) return e.Estado;
+        }
+        return null;
+    }
+
+    private static String tsToString(Timestamp ts) {
+        if (ts == null) return null;
+        return String.format("%tF %<tT", ts);
     }
 
     private static final String[] COLUMNAS_USUARIO = {
@@ -576,7 +679,6 @@ public class AccesoDatos {
         @Override public <T> T unwrap(Class<T> iface) throws SQLException { return null; }
     }
 
-    // --- ResultSet generico para consultas desde JSON ---
     private static class SimpleResultSet implements ResultSet {
 
         private final List<String[]> filas;
@@ -875,9 +977,12 @@ public class AccesoDatos {
     }
 
     public ResultSet listarEstadosMision() throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ListarEstadosMisiones()}");
-        return cs.executeQuery();
+        List<EstadoMisionJson> estados = leerEstadosMisionDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (EstadoMisionJson e : estados) {
+            filas.add(new String[]{String.valueOf(e.EstadoMID), e.Estado});
+        }
+        return new SimpleResultSet(filas, 2);
     }
 
     public ResultSet listarEstadosTripulante() {
@@ -920,7 +1025,6 @@ public class AccesoDatos {
         try {
             jsonLock.iniciarEscritura();
             try {
-                // Leer dentro del lock de escritura: ningún otro hilo puede leer ni escribir.
                 Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
                 List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
                         new TypeReference<List<UsuarioJson>>() {});
@@ -1007,7 +1111,7 @@ public class AccesoDatos {
 
                 for (UsuarioJson u : usuarios) {
                     if (u.UsuarioID == usuarioID) {
-                        u.EstadoUID = 2; // baja lógica → Inactivo
+                        u.EstadoUID = 2;
                         encontrado = true;
                         break;
                     }
@@ -1030,7 +1134,6 @@ public class AccesoDatos {
         try {
             bajaUsuario(Integer.parseInt(usuarioOID));
         } catch (NumberFormatException e) {
-            // Búsqueda por nombre de usuario (flujo legacy)
             try {
                 jsonLock.iniciarEscritura();
                 try {
@@ -1064,52 +1167,134 @@ public class AccesoDatos {
     }
 
     public void registrarMision(int estadoMID, String nombre, String descripcion, Timestamp ini, Timestamp fin) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL AMision(?, ?, ?, ?, ?)}");
-        cs.setInt(1, estadoMID);
-        cs.setString(2, nombre);
-        cs.setString(3, descripcion);
-        cs.setTimestamp(4, ini);
-        cs.setTimestamp(5, fin);
-        cs.execute();
+        try {
+            misionLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
+                List<MisionJson> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
+
+                int nuevoId = 1;
+                for (MisionJson m : misiones) {
+                    if (m.MisionID >= nuevoId) nuevoId = m.MisionID + 1;
+                }
+
+                MisionJson nueva = new MisionJson();
+                nueva.MisionID = nuevoId;
+                nueva.EstadoMID = estadoMID;
+                nueva.Nombre = nombre;
+                nueva.Descripcion = descripcion;
+                nueva.FechaInicioEstimada = tsToString(ini);
+                nueva.FechaFinEstimada = tsToString(fin);
+                nueva.RetrasoInicio = null;
+                nueva.RetrasoFin = null;
+
+                misiones.add(nueva);
+                escribirMisionesEnJsonSinLock(misiones);
+            } finally {
+                misionLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            System.err.println("Error al registrar misión: " + e.getMessage());
+        }
     }
 
     public void modificarMision(int id, String nombre, String desc, Timestamp ini, Timestamp fin) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL MMision(?, ?, ?, ?, ?)}");
-        cs.setInt(1, id);
-        cs.setString(2, nombre);
-        cs.setString(3, desc);
-        cs.setTimestamp(4, ini);
-        cs.setTimestamp(5, fin);
-        cs.execute();
+        try {
+            misionLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
+                List<MisionJson> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
+                for (MisionJson m : misiones) {
+                    if (m.MisionID == id) {
+                        m.Nombre = nombre;
+                        m.Descripcion = desc;
+                        m.FechaInicioEstimada = tsToString(ini);
+                        m.FechaFinEstimada = tsToString(fin);
+                        break;
+                    }
+                }
+                escribirMisionesEnJsonSinLock(misiones);
+            } finally {
+                misionLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            System.err.println("Error al modificar misión: " + e.getMessage());
+        }
     }
 
     public void actualizarEstadoMision(int id, int estadoID, Integer retrasoInicio, Integer retrasoFin) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ActualizarEstadoMision(?, ?, ?, ?)}");
-        cs.setInt(1, id);
-        cs.setInt(2, estadoID);
-        if (retrasoInicio != null) cs.setInt(3, retrasoInicio); else cs.setNull(3, java.sql.Types.INTEGER);
-        if (retrasoFin != null) cs.setInt(4, retrasoFin); else cs.setNull(4, java.sql.Types.INTEGER);
-        cs.execute();
+        try {
+            misionLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
+                List<MisionJson> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
+                for (MisionJson m : misiones) {
+                    if (m.MisionID == id) {
+                        m.EstadoMID = estadoID;
+                        if (retrasoInicio != null) m.RetrasoInicio = retrasoInicio;
+                        if (retrasoFin != null) m.RetrasoFin = retrasoFin;
+                        break;
+                    }
+                }
+                escribirMisionesEnJsonSinLock(misiones);
+            } finally {
+                misionLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            System.err.println("Error al actualizar estado de misión: " + e.getMessage());
+        }
     }
 
     public ResultSet listarMisiones() throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ListarMisiones()}");
-        return cs.executeQuery();
+        List<MisionJson> misiones = leerMisionesDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (MisionJson m : misiones) {
+            filas.add(new String[]{
+                String.valueOf(m.MisionID),
+                m.Nombre != null ? m.Nombre : "",
+                m.Descripcion != null ? m.Descripcion : "",
+                obtenerNombreEstadoMisionPorId(m.EstadoMID),
+                m.FechaInicioEstimada != null ? m.FechaInicioEstimada : "",
+                m.FechaFinEstimada != null ? m.FechaFinEstimada : "",
+                m.RetrasoInicio != null ? String.valueOf(m.RetrasoInicio) : ""
+            });
+        }
+        return new SimpleResultSet(filas, 7);
     }
 
     public ResultSet consultarMision(int id) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ConsultarMision(?)}");
-        cs.setInt(1, id);
-        return cs.executeQuery();
+        List<MisionJson> misiones = leerMisionesDesdeJson();
+        for (MisionJson m : misiones) {
+            if (m.MisionID == id) {
+                List<String[]> filas = new ArrayList<>();
+                filas.add(new String[]{
+                    String.valueOf(m.MisionID),
+                    m.Nombre != null ? m.Nombre : "",
+                    m.Descripcion != null ? m.Descripcion : "",
+                    obtenerNombreEstadoMisionPorId(m.EstadoMID),
+                    m.FechaInicioEstimada != null ? m.FechaInicioEstimada : "",
+                    m.FechaFinEstimada != null ? m.FechaFinEstimada : "",
+                    m.RetrasoInicio != null ? String.valueOf(m.RetrasoInicio) : "",
+                    m.RetrasoFin != null ? String.valueOf(m.RetrasoFin) : ""
+                });
+                return new SimpleResultSet(filas, 8);
+            }
+        }
+        return new SimpleResultSet(new ArrayList<>(), 8);
     }
 
     public boolean existeMision(int id) throws SQLException {
-        return consultarMision(id).next();
+        List<MisionJson> misiones = leerMisionesDesdeJson();
+        for (MisionJson m : misiones) {
+            if (m.MisionID == id) return true;
+        }
+        return false;
     }
 
     public ResultSet registrarTripulante(int estadoTID, int sexoID, int peso, int altura,
@@ -1220,12 +1405,25 @@ public class AccesoDatos {
     }
 
     public void asignarTripulante(int tripID, int misID, Timestamp fecha) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL AGrupoMision(?, ?, ?)}");
-        cs.setInt(1, tripID);
-        cs.setInt(2, misID);
-        cs.setTimestamp(3, fecha);
-        cs.execute();
+        try {
+            misionLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "GrupoMisiones.json");
+                List<GrupoMisionJson> grupos = mapper.readValue(ruta.toFile(), new TypeReference<List<GrupoMisionJson>>() {});
+                GrupoMisionJson nuevo = new GrupoMisionJson();
+                nuevo.TripulanteID = tripID;
+                nuevo.MisionID = misID;
+                nuevo.FechaAsignacion = tsToString(fecha);
+                grupos.add(nuevo);
+                escribirGrupoMisionesEnJsonSinLock(grupos);
+            } finally {
+                misionLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            System.err.println("Error al asignar tripulante a misión: " + e.getMessage());
+        }
     }
 
     public ResultSet listarTripulantes() {
@@ -1247,17 +1445,49 @@ public class AccesoDatos {
     }
 
     public ResultSet listarTripulantesMision(int misionID) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ListarTripulantesMision(?)}");
-        cs.setInt(1, misionID);
-        return cs.executeQuery();
+        List<GrupoMisionJson> grupos = leerGrupoMisionesDesdeJson();
+        List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (GrupoMisionJson g : grupos) {
+            if (g.MisionID == misionID) {
+                for (TripulanteJson t : tripulantes) {
+                    if (t.TripulanteID == g.TripulanteID) {
+                        filas.add(new String[]{
+                            String.valueOf(t.TripulanteID),
+                            t.Nombre != null ? t.Nombre : "",
+                            t.Apellido != null ? t.Apellido : "",
+                            obtenerNombreEstadoTripulantePorId(t.EstadoTID),
+                            g.FechaAsignacion != null ? g.FechaAsignacion : ""
+                        });
+                        break;
+                    }
+                }
+            }
+        }
+        return new SimpleResultSet(filas, 5);
     }
 
     public ResultSet listarMisionesTripulante(int tripulanteID) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ListarMisionesTripulante(?)}");
-        cs.setInt(1, tripulanteID);
-        return cs.executeQuery();
+        List<GrupoMisionJson> grupos = leerGrupoMisionesDesdeJson();
+        List<MisionJson> misiones = leerMisionesDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (GrupoMisionJson g : grupos) {
+            if (g.TripulanteID == tripulanteID) {
+                for (MisionJson m : misiones) {
+                    if (m.MisionID == g.MisionID) {
+                        filas.add(new String[]{
+                            String.valueOf(m.MisionID),
+                            m.Nombre != null ? m.Nombre : "",
+                            obtenerNombreEstadoMisionPorId(m.EstadoMID),
+                            m.FechaInicioEstimada != null ? m.FechaInicioEstimada : "",
+                            m.FechaFinEstimada != null ? m.FechaFinEstimada : ""
+                        });
+                        break;
+                    }
+                }
+            }
+        }
+        return new SimpleResultSet(filas, 5);
     }
 
     public ResultSet consultarTripulante(int tripulanteID) {

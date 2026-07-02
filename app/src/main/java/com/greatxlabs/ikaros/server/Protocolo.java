@@ -2,27 +2,8 @@ package com.greatxlabs.ikaros.server;
 
 import java.sql.*;
 
-/**
- * Procesa todos los mensajes del protocolo de aplicación.
- *
- * Formato de solicitud: OPERACION|token|param1|param2|...
- * Formato de respuesta:  OK|datos  o  ERROR|codigo|mensaje
- *
- * Listas:   OK|col1~col2;col1~col2  (~ = columnas, ; = filas)
- * Detalle:  OK|col1|col2|col3
- *
- * Codigos de error:
- *   E00 = sesion invalida/vencida
- *   E01 = permiso insuficiente
- *   E02 = credenciales incorrectas
- *   E05 = ID duplicado (SQL 1062)
- *   E07 = recurso referenciado no existe (SQL 1452)
- *   E10 = parametro con tipo o formato invalido
- *   E99 = error interno del servidor
- */
 public class Protocolo {
 
-	/** Lanzada cuando un parámetro del cliente tiene tipo o formato inválido. */
 	private static class ErrorProtocolo extends RuntimeException {
 		final String respuesta;
 		ErrorProtocolo(String respuesta) { super(respuesta); this.respuesta = respuesta; }
@@ -125,7 +106,6 @@ public class Protocolo {
 		}
 	}
 
-	// REGISTRAR_LOG|token|accionID|tipoEntidadID|entidadID
 	private String manejarRegistroLog(String token, String[] partes) throws SQLException {
 		if (partes.length < 5) return "ERROR|E99|Parámetros insuficientes";
 		int accionID = parseEntero(partes[2], "accionID");
@@ -137,11 +117,6 @@ public class Protocolo {
 		return "OK|Log registrado";
 	}
 
-	// --- USUARIOS ---
-	// REGISTRAR_USUARIO|token|usuario|clave|nombre|apellido|rol
-	// MODIFICAR_USUARIO|token|id|usuario|clave|nombre|apellido|rol   (clave vacía = no modificar)
-	// BAJA_USUARIO|token|id
-	// LISTAR_USUARIOS|token
 	private String manejarUsuarios(String operacion, String[] partes) throws SQLException {
 		switch (operacion) {
 		case "REGISTRAR_USUARIO": {
@@ -177,13 +152,6 @@ public class Protocolo {
 		}
 	}
 
-	// --- MISIONES ---
-	// REGISTRAR_MISION|token|_|nombre|descripcion|fechaInicio|fechaFin
-	//   (partes[2] ignorado, estado PLANIFICADA asignado automáticamente)
-	// MODIFICAR_MISION|token|misionID|nombre|descripcion|fechaInicio|fechaFin
-	// ACTUALIZAR_ESTADO_MISION|token|misionID|estado[|retrasoInicio[|retrasoFin]]
-	// LISTAR_MISIONES|token
-	// CONSULTAR_MISION|token|misionID
 	private String manejarMisiones(String operacion, String[] partes) throws SQLException {
 		switch (operacion) {
 		case "REGISTRAR_MISION": {
@@ -230,18 +198,6 @@ public class Protocolo {
 		}
 	}
 
-	// --- TRIPULANTES ---
-	// REGISTRAR_TRIPULANTE|token|sexo|fechaNac|peso|altura|nombre|apellido|imagen
-	// MODIFICAR_TRIPULANTE|token|tripulanteID|estado|sexo|fechaNac|peso|altura|nombre|apellido|imagen
-	// BAJA_TRIPULANTE|token|tripulanteID
-	// ELIMINAR_CAPACIDADES|token|tripulanteID
-	// REGISTRAR_CAPACIDAD|token|tripulanteID|aptitudID|calificacion|fecha
-	// ASIGNAR_TRIPULANTE|token|tripulanteID|misionID
-	// LISTAR_TRIPULANTES|token
-	// LISTAR_TRIPULANTES_MISION|token|misionID
-	// CONSULTAR_TRIPULANTE|token|tripulanteID
-	// CONSULTAR_CAPACIDADES|token|tripulanteID
-	// LISTAR_MISIONES_TRIPULANTE|token|tripulanteID
 	private String manejarTripulantes(String operacion, String[] partes) throws SQLException {
 		switch (operacion) {
 		case "REGISTRAR_TRIPULANTE": {
@@ -338,12 +294,6 @@ public class Protocolo {
 		}
 	}
 
-	// --- EVENTOS ---
-	// LISTAR_EVENTOS|token
-	// REGISTRAR_EVENTO|token|misionID|titulo|descripcion
-	// BAJA_EVENTO|token|eventoID
-	// CONSULTAR_EVENTOS|token|misionID
-	// VER_LOGS|token
 	private String manejarEventos(String operacion, String[] partes) throws SQLException {
 		switch (operacion) {
 		case "LISTAR_EVENTOS":
@@ -427,7 +377,6 @@ public class Protocolo {
 		StringBuilder sb = new StringBuilder("OK|");
 		boolean primero = true;
 		while (rs.next()) {
-			// Saltar filas de MensajeResultado (patrón "Exito:" o "Error:" en primera columna)
 			String firstCol = rs.getString(1);
 			if (firstCol != null && (firstCol.startsWith("Exito:") || firstCol.startsWith("Error:"))) continue;
 			if (!primero) sb.append(";");

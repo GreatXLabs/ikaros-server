@@ -8,14 +8,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Gestiona sesiones de usuario y permisos por rol.
- *
- * Sesiones: token UUID de 8 caracteres, expiran a los 30 min de inactividad.
- * El mapa sesionesActivas esta protegido por un SemaforoRW.
- *
- * Roles: JEFE (acceso total), RRHH, COORDINADOR, ASIGNADOR, REGISTRADOR.
- */
 public class GestorSesiones {
 
     private static class Sesion {
@@ -80,10 +72,10 @@ public class GestorSesiones {
     public String iniciarSesion(String usuario, String clave) {
         if (accesoDatos == null) return null;
         try {
-            boolean credencialesValidas = accesoDatos.validarLogin(usuario, clave); //CAMBIADO: ahora valida contra JSON
+            boolean credencialesValidas = accesoDatos.validarLogin(usuario, clave);
             if (!credencialesValidas) return null;
 
-            AccesoDatos.UsuarioLoginResult datos = accesoDatos.obtenerDatosUsuarioParaLogin(usuario); //CAMBIADO: obtiene datos desde JSON
+            AccesoDatos.UsuarioLoginResult datos = accesoDatos.obtenerDatosUsuarioParaLogin(usuario);
             if (datos == null) return null;
 
             String token = UUID.randomUUID().toString().substring(0, 8);
