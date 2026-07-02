@@ -40,6 +40,7 @@ public class AccesoDatos {
     private static final SemaforoRW jsonLock = new SemaforoRW();
     private static final SemaforoRW tripulanteLock = new SemaforoRW();
     private static final SemaforoRW misionLock = new SemaforoRW();
+    private static final SemaforoRW eventoLock = new SemaforoRW();
 
     private static void asegurarArchivo(String nombre) throws IOException {
         Path destino = Path.of(Configuracion.getDataDir(), nombre);
@@ -65,6 +66,8 @@ public class AccesoDatos {
             asegurarArchivo("Misiones.json");
             asegurarArchivo("EstadosMisiones.json");
             asegurarArchivo("GrupoMisiones.json");
+            asegurarArchivo("Eventos.json");
+            asegurarArchivo("EstadosEventos.json");
         } catch (IOException e) {
             System.err.println("Error inicializando archivos de datos: " + e.getMessage());
         }
@@ -161,6 +164,22 @@ public class AccesoDatos {
         public int MisionID;
         public String FechaAsignacion;
         public GrupoMisionJson() {}
+    }
+
+    private static class EventoJson {
+        public int EventoID;
+        public int MisionID;
+        public String Titulo;
+        public String Fecha;
+        public String Descripcion;
+        public int EstadoEID;
+        public EventoJson() {}
+    }
+
+    private static class EstadoEventoJson {
+        public int EstadoEID;
+        public String Estado;
+        public EstadoEventoJson() {}
     }
 
     private List<UsuarioJson> leerUsuariosDesdeJson() {
@@ -364,6 +383,43 @@ public class AccesoDatos {
                 StandardCopyOption.ATOMIC_MOVE);
     }
 
+    private List<EventoJson> leerEventosDesdeJson() {
+        try {
+            eventoLock.iniciarLectura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<EventoJson>>() {});
+            } finally {
+                eventoLock.terminarLectura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al leer Eventos.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private void escribirEventosEnJsonSinLock(List<EventoJson> eventos) throws IOException {
+        Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
+        Path tmp = Files.createTempFile(ruta.getParent(), "Eventos", ".tmp");
+        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), eventos);
+        Files.move(tmp, ruta,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE);
+    }
+
+    private List<EstadoEventoJson> leerEstadosEventoDesdeJson() {
+        try {
+            Path ruta = Path.of(Configuracion.getDataDir(), "EstadosEventos.json");
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoEventoJson>>() {});
+        } catch (Exception e) {
+            System.err.println("Error al leer EstadosEventos.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
     private List<SexoJson> leerSexosDesdeJson() {
         try {
             Path ruta = Path.of(Configuracion.getDataDir(), "Sexos.json");
@@ -422,6 +478,22 @@ public class AccesoDatos {
         List<EstadoMisionJson> estados = leerEstadosMisionDesdeJson();
         for (EstadoMisionJson e : estados) {
             if (e.EstadoMID == estadoMID) return e.Estado;
+        }
+        return null;
+    }
+
+    private String obtenerNombreEstadoEventoPorId(int estadoEID) {
+        List<EstadoEventoJson> estados = leerEstadosEventoDesdeJson();
+        for (EstadoEventoJson e : estados) {
+            if (e.EstadoEID == estadoEID) return e.Estado;
+        }
+        return null;
+    }
+
+    private String obtenerNombreMisionPorId(int misionID) {
+        List<MisionJson> misiones = leerMisionesDesdeJson();
+        for (MisionJson m : misiones) {
+            if (m.MisionID == misionID) return m.Nombre;
         }
         return null;
     }
@@ -995,9 +1067,12 @@ public class AccesoDatos {
     }
 
     public ResultSet listarEstadosEvento() throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ListarEstadosEventos()}");
-        return cs.executeQuery();
+        List<EstadoEventoJson> estados = leerEstadosEventoDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (EstadoEventoJson e : estados) {
+            filas.add(new String[]{String.valueOf(e.EstadoEID), e.Estado});
+        }
+        return new SimpleResultSet(filas, 2);
     }
 
     public void registrarLog(int usuarioID, int accionID, int tipoEntidadID, int entidadID) throws SQLException {
@@ -1584,34 +1659,91 @@ public class AccesoDatos {
     }
 
     public void registrarEvento(int misionID, String titulo, String desc, Timestamp fecha) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL AEvento(?, ?, ?, ?)}");
-        cs.setInt(1, misionID);
-        cs.setString(2, titulo);
-        cs.setString(3, desc);
-        cs.setTimestamp(4, fecha);
-        cs.execute();
+        try {
+            eventoLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
+                List<EventoJson> eventos = mapper.readValue(ruta.toFile(), new TypeReference<List<EventoJson>>() {});
+
+                int nuevoId = 1;
+                for (EventoJson e : eventos) {
+                    if (e.EventoID >= nuevoId) nuevoId = e.EventoID + 1;
+                }
+
+                EventoJson nuevo = new EventoJson();
+                nuevo.EventoID = nuevoId;
+                nuevo.MisionID = misionID;
+                nuevo.Titulo = titulo;
+                nuevo.Fecha = tsToString(fecha);
+                nuevo.Descripcion = desc;
+                nuevo.EstadoEID = 1;
+
+                eventos.add(nuevo);
+                escribirEventosEnJsonSinLock(eventos);
+            } finally {
+                eventoLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            System.err.println("Error al registrar evento: " + e.getMessage());
+        }
     }
 
     public void bajaEvento(int eventoID) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL BEvento(?, ?)}");
-        cs.setInt(1, eventoID);
-        cs.setInt(2, 2);
-        cs.execute();
+        try {
+            eventoLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
+                List<EventoJson> eventos = mapper.readValue(ruta.toFile(), new TypeReference<List<EventoJson>>() {});
+                for (EventoJson e : eventos) {
+                    if (e.EventoID == eventoID) {
+                        e.EstadoEID = 2;
+                        break;
+                    }
+                }
+                escribirEventosEnJsonSinLock(eventos);
+            } finally {
+                eventoLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            System.err.println("Error al desestimar evento: " + e.getMessage());
+        }
     }
 
     public ResultSet listarEventos() throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ListarEventos()}");
-        return cs.executeQuery();
+        List<EventoJson> eventos = leerEventosDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (EventoJson e : eventos) {
+            filas.add(new String[]{
+                String.valueOf(e.EventoID),
+                obtenerNombreMisionPorId(e.MisionID),
+                e.Titulo != null ? e.Titulo : "",
+                e.Fecha != null ? e.Fecha : "",
+                e.Descripcion != null ? e.Descripcion : "",
+                obtenerNombreEstadoEventoPorId(e.EstadoEID)
+            });
+        }
+        return new SimpleResultSet(filas, 6);
     }
 
     public ResultSet consultarEventos(int misionID) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ConsultarEventos(?)}");
-        cs.setInt(1, misionID);
-        return cs.executeQuery();
+        List<EventoJson> eventos = leerEventosDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (EventoJson e : eventos) {
+            if (e.MisionID == misionID) {
+                filas.add(new String[]{
+                    String.valueOf(e.EventoID),
+                    e.Titulo != null ? e.Titulo : "",
+                    e.Fecha != null ? e.Fecha : "",
+                    e.Descripcion != null ? e.Descripcion : "",
+                    obtenerNombreEstadoEventoPorId(e.EstadoEID)
+                });
+            }
+        }
+        return new SimpleResultSet(filas, 5);
     }
 
     public ResultSet verLogs() throws SQLException {
