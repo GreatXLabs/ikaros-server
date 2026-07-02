@@ -3,16 +3,7 @@ package com.greatxlabs.ikaros.server;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-/**
- * Gestiona sesiones de usuario y permisos por rol.
- *
- * Sesiones: token UUID de 8 caracteres, java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;

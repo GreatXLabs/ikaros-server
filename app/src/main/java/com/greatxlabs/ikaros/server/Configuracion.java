@@ -53,6 +53,7 @@ public class Configuracion {
 		return get("DB_PASSWORD", "");
 	}
 
+
 	/**
 	 * Directorio donde se leen y escriben los archivos JSON de usuarios.
 	 * Default "data" (relativo al working dir) para correr local.

@@ -30,7 +30,6 @@ dependencies {
 
     // Carga de variables de entorno desde .env
     implementation libs.dotenv.java
-
     // Jackson for JSON processing
     implementation libs.jackson
 }
