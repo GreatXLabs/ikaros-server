@@ -428,7 +428,7 @@ public class AccesoDatos {
 
     private static String tsToString(Timestamp ts) {
         if (ts == null) return null;
-        return String.format("%tF %<tT", ts);
+        return ts.toLocalDateTime().toString();
     }
 
     private static final String[] COLUMNAS_USUARIO = {
@@ -1258,11 +1258,11 @@ public class AccesoDatos {
             filas.add(new String[]{
                 String.valueOf(m.MisionID),
                 m.Nombre != null ? m.Nombre : "",
-                m.Descripcion != null ? m.Descripcion : "",
-                obtenerNombreEstadoMisionPorId(m.EstadoMID),
                 m.FechaInicioEstimada != null ? m.FechaInicioEstimada : "",
                 m.FechaFinEstimada != null ? m.FechaFinEstimada : "",
-                m.RetrasoInicio != null ? String.valueOf(m.RetrasoInicio) : ""
+                m.RetrasoInicio != null ? String.valueOf(m.RetrasoInicio) : "",
+                m.RetrasoFin != null ? String.valueOf(m.RetrasoFin) : "",
+                obtenerNombreEstadoMisionPorId(m.EstadoMID)
             });
         }
         return new SimpleResultSet(filas, 7);
