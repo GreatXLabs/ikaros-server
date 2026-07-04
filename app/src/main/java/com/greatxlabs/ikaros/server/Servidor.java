@@ -65,8 +65,6 @@ public class Servidor {
         System.out.println("Esperando conexiones (Modo Concurrente)...");
 
         try (ServerSocket serverSocket = new ServerSocket(puerto)) {
-            Runtime.getRuntime().addShutdownHook(new Thread(ConexionBD::cerrarConexion));
-
             while (true) {
                 Socket cliente = serverSocket.accept();
                 System.out.println("Cliente conectado: " + cliente.getInetAddress());
@@ -77,8 +75,6 @@ public class Servidor {
             }
         } catch (IOException e) {
             System.err.println("Error crítico en el servidor: " + e.getMessage());
-        } finally {
-            ConexionBD.cerrarConexion();
         }
     }
 }

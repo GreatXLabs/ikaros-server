@@ -18,8 +18,6 @@ import java.util.Map;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
-import java.sql.Connection;
-import java.sql.CallableStatement;
 import java.sql.NClob;
 import java.sql.Ref;
 import java.sql.ResultSet;
@@ -30,8 +28,8 @@ import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.util.Date;
 import java.util.Collections;
+import java.util.Date;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -1118,17 +1116,13 @@ public class AccesoDatos {
         return null;
     }
 
-    public ResultSet obtenerDatosUsuario(String usuario) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
-        cs.setString(1, usuario);
-        return cs.executeQuery();
-    }
-
-    public ResultSet consultarRoles() throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ConsultarRoles()}");
-        return cs.executeQuery();
+    public ResultSet consultarRoles() {
+        List<RolJson> roles = leerRolesDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (RolJson r : roles) {
+            filas.add(new String[]{String.valueOf(r.RolID), r.Rol});
+        }
+        return new SimpleResultSet(filas, 2);
     }
 
     public ResultSet consultarAptitudes() {
