@@ -32,6 +32,8 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.Collections;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class AccesoDatos {
 
@@ -41,6 +43,7 @@ public class AccesoDatos {
     private static final SemaforoRW tripulanteLock = new SemaforoRW();
     private static final SemaforoRW misionLock = new SemaforoRW();
     private static final SemaforoRW eventoLock = new SemaforoRW();
+    private static final SemaforoRW registroLock = new SemaforoRW();
 
     private static void asegurarArchivo(String nombre) throws IOException {
         Path destino = Path.of(Configuracion.getDataDir(), nombre);
@@ -68,6 +71,9 @@ public class AccesoDatos {
             asegurarArchivo("GrupoMisiones.json");
             asegurarArchivo("Eventos.json");
             asegurarArchivo("EstadosEventos.json");
+            asegurarArchivo("Acciones.json");
+            asegurarArchivo("Entidades.json");
+            asegurarArchivo("Registros.json");
         } catch (IOException e) {
             System.err.println("Error inicializando archivos de datos: " + e.getMessage());
         }
@@ -180,6 +186,29 @@ public class AccesoDatos {
         public int EstadoEID;
         public String Estado;
         public EstadoEventoJson() {}
+    }
+
+    private static class AccionJson {
+        public int AccionID;
+        public String Accion;
+        public AccionJson() {}
+    }
+
+    private static class EntidadJson {
+        public int TipoEntidadID;
+        public String TipoEntidad;
+        public EntidadJson() {}
+    }
+
+    private static class RegistroJson {
+        public int RegistroID;
+        public int AccionMID;
+        public int UsuarioID;
+        public int TipoEntidadID;
+        public int EntidadID;
+        public String FechaHora;
+        public String Descripcion;
+        public RegistroJson() {}
     }
 
     private List<UsuarioJson> leerUsuariosDesdeJson() {
@@ -418,6 +447,69 @@ public class AccesoDatos {
             System.err.println("Error al leer EstadosEventos.json: " + e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    private List<AccionJson> leerAccionesDesdeJson() {
+        try {
+            Path ruta = Path.of(Configuracion.getDataDir(), "Acciones.json");
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<AccionJson>>() {});
+        } catch (Exception e) {
+            System.err.println("Error al leer Acciones.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private List<EntidadJson> leerEntidadesDesdeJson() {
+        try {
+            Path ruta = Path.of(Configuracion.getDataDir(), "Entidades.json");
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<EntidadJson>>() {});
+        } catch (Exception e) {
+            System.err.println("Error al leer Entidades.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private List<RegistroJson> leerRegistrosDesdeJson() {
+        try {
+            registroLock.iniciarLectura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Registros.json");
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<RegistroJson>>() {});
+            } finally {
+                registroLock.terminarLectura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error al leer Registros.json: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private void escribirRegistrosEnJsonSinLock(List<RegistroJson> registros) throws IOException {
+        Path ruta = Path.of(Configuracion.getDataDir(), "Registros.json");
+        Path tmp = Files.createTempFile(ruta.getParent(), "Registros", ".tmp");
+        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), registros);
+        Files.move(tmp, ruta,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE);
+    }
+
+    private String obtenerNombreAccionPorId(int accionID) {
+        List<AccionJson> acciones = leerAccionesDesdeJson();
+        for (AccionJson a : acciones) {
+            if (a.AccionID == accionID) return a.Accion;
+        }
+        return null;
+    }
+
+    private String obtenerNombreEntidadPorId(int tipoEntidadID) {
+        List<EntidadJson> entidades = leerEntidadesDesdeJson();
+        for (EntidadJson e : entidades) {
+            if (e.TipoEntidadID == tipoEntidadID) return e.TipoEntidad;
+        }
+        return null;
     }
 
     private List<SexoJson> leerSexosDesdeJson() {
@@ -1075,15 +1167,39 @@ public class AccesoDatos {
         return new SimpleResultSet(filas, 2);
     }
 
-    public void registrarLog(int usuarioID, int accionID, int tipoEntidadID, int entidadID) throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL ARegistro(?, ?, ?, ?, ?)}");
-        cs.setInt(1, usuarioID);
-        cs.setInt(2, accionID);
-        cs.setInt(3, tipoEntidadID);
-        cs.setInt(4, entidadID);
-        cs.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
-        cs.execute();
+    public void registrarLog(int usuarioID, int accionID, int tipoEntidadID, int entidadID, String descripcion) {
+        try {
+            registroLock.iniciarEscritura();
+            try {
+                Path ruta = Path.of(Configuracion.getDataDir(), "Registros.json");
+                List<RegistroJson> registros = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<RegistroJson>>() {});
+
+                int nuevoId = 1;
+                for (RegistroJson r : registros) {
+                    if (r.RegistroID >= nuevoId) nuevoId = r.RegistroID + 1;
+                }
+
+                RegistroJson nuevo = new RegistroJson();
+                nuevo.RegistroID = nuevoId;
+                nuevo.AccionMID = accionID;
+                nuevo.UsuarioID = usuarioID;
+                nuevo.TipoEntidadID = tipoEntidadID;
+                nuevo.EntidadID = entidadID;
+                nuevo.FechaHora = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                nuevo.Descripcion = descripcion != null ? descripcion : "";
+
+                registros.add(nuevo);
+                escribirRegistrosEnJsonSinLock(registros);
+            } finally {
+                registroLock.terminarEscritura();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Operación interrumpida al registrar log: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Error al registrar log: " + e.getMessage());
+        }
     }
 
     public int obtenerUsuarioID(String usuario) {
@@ -1096,7 +1212,7 @@ public class AccesoDatos {
         throw new IllegalArgumentException("Usuario no encontrado: " + usuario);
     }
 
-    public void registrarUsuario(int rolID, String usuario, String nombre, String apellido, String clave) {
+    public int registrarUsuario(int rolID, String usuario, String nombre, String apellido, String clave) {
         try {
             jsonLock.iniciarEscritura();
             try {
@@ -1120,6 +1236,7 @@ public class AccesoDatos {
 
                 usuarios.add(nuevoUsuario);
                 escribirUsuariosEnJsonSinLock(usuarios);
+                return nuevoId;
             } finally {
                 jsonLock.terminarEscritura();
             }
@@ -1129,9 +1246,10 @@ public class AccesoDatos {
         } catch (IOException e) {
             System.err.println("Error al registrar usuario: " + e.getMessage());
         }
+        return -1;
     }
 
-    public void modificarUsuario(int usuarioID, int rolID, String usuario, String nombre, String apellido, String clave) {
+    public void modificarUsuario(int usuarioIDLogueado, int usuarioID, int rolID, String usuario, String nombre, String apellido, String clave) {
         try {
             jsonLock.iniciarEscritura();
             try {
@@ -1139,14 +1257,30 @@ public class AccesoDatos {
                 List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
                         new TypeReference<List<UsuarioJson>>() {});
                 boolean encontrado = false;
+                StringBuilder desc = new StringBuilder("Modificacion: ");
 
                 for (UsuarioJson u : usuarios) {
                     if (u.UsuarioID == usuarioID) {
-                        if (rolID != 0) u.RolID = rolID;
-                        if (usuario != null && !usuario.isEmpty()) u.Usuario = usuario;
-                        if (nombre != null && !nombre.isEmpty()) u.Nombre = nombre;
-                        if (apellido != null && !apellido.isEmpty()) u.Apellido = apellido;
-                        if (clave != null && !clave.isEmpty()) u.Clave = clave;
+                        if (rolID != 0 && u.RolID != rolID) {
+                            desc.append("Rol: '").append(obtenerNombreRolPorId(u.RolID)).append("' -> '").append(obtenerNombreRolPorId(rolID)).append("'; ");
+                            u.RolID = rolID;
+                        }
+                        if (usuario != null && !usuario.isEmpty() && !usuario.equals(u.Usuario)) {
+                            desc.append("Usuario: '").append(u.Usuario).append("' -> '").append(usuario).append("'; ");
+                            u.Usuario = usuario;
+                        }
+                        if (nombre != null && !nombre.isEmpty() && !nombre.equals(u.Nombre)) {
+                            desc.append("Nombre: '").append(u.Nombre).append("' -> '").append(nombre).append("'; ");
+                            u.Nombre = nombre;
+                        }
+                        if (apellido != null && !apellido.isEmpty() && !apellido.equals(u.Apellido)) {
+                            desc.append("Apellido: '").append(u.Apellido).append("' -> '").append(apellido).append("'; ");
+                            u.Apellido = apellido;
+                        }
+                        if (clave != null && !clave.isEmpty() && !clave.equals(u.Clave)) {
+                            desc.append("Clave: '").append(u.Clave).append("' -> '").append(clave).append("'; ");
+                            u.Clave = clave;
+                        }
                         encontrado = true;
                         break;
                     }
@@ -1154,6 +1288,8 @@ public class AccesoDatos {
 
                 if (!encontrado) throw new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioID);
                 escribirUsuariosEnJsonSinLock(usuarios);
+                String descStr = desc.length() > 16 ? desc.substring(0, desc.length() - 2) : "Sin cambios";
+                registrarLog(usuarioIDLogueado, 14, 4, usuarioID, descStr);
             } finally {
                 jsonLock.terminarEscritura();
             }
@@ -1175,7 +1311,7 @@ public class AccesoDatos {
         return "";
     }
 
-    public void bajaUsuario(int usuarioID) {
+    public void bajaUsuario(int usuarioIDLogueado, int usuarioID) {
         try {
             jsonLock.iniciarEscritura();
             try {
@@ -1186,14 +1322,18 @@ public class AccesoDatos {
 
                 for (UsuarioJson u : usuarios) {
                     if (u.UsuarioID == usuarioID) {
+                        String estadoAnterior = obtenerNombreEstadoPorId(u.EstadoUID);
                         u.EstadoUID = 2;
+                        String estadoActual = obtenerNombreEstadoPorId(u.EstadoUID);
+                        escribirUsuariosEnJsonSinLock(usuarios);
+                        String desc = "Baja logica: Estado: '" + estadoAnterior + "' -> '" + estadoActual + "'";
+                        registrarLog(usuarioIDLogueado, 14, 4, usuarioID, desc);
                         encontrado = true;
                         break;
                     }
                 }
 
                 if (!encontrado) throw new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioID);
-                escribirUsuariosEnJsonSinLock(usuarios);
             } finally {
                 jsonLock.terminarEscritura();
             }
@@ -1205,9 +1345,9 @@ public class AccesoDatos {
         }
     }
 
-    public void bajaUsuario(String usuarioOID) {
+    public void bajaUsuario(int usuarioIDLogueado, String usuarioOID) {
         try {
-            bajaUsuario(Integer.parseInt(usuarioOID));
+            bajaUsuario(usuarioIDLogueado, Integer.parseInt(usuarioOID));
         } catch (NumberFormatException e) {
             try {
                 jsonLock.iniciarEscritura();
@@ -1218,13 +1358,17 @@ public class AccesoDatos {
                     boolean encontrado = false;
                     for (UsuarioJson u : usuarios) {
                         if (u.Usuario != null && u.Usuario.equals(usuarioOID)) {
+                            String estadoAnterior = obtenerNombreEstadoPorId(u.EstadoUID);
                             u.EstadoUID = 2;
+                            String estadoActual = obtenerNombreEstadoPorId(u.EstadoUID);
+                            escribirUsuariosEnJsonSinLock(usuarios);
+                            String desc = "Baja logica: Estado: '" + estadoAnterior + "' -> '" + estadoActual + "'";
+                            registrarLog(usuarioIDLogueado, 14, 4, u.UsuarioID, desc);
                             encontrado = true;
                             break;
                         }
                     }
                     if (!encontrado) throw new IllegalArgumentException("Usuario no encontrado: " + usuarioOID);
-                    escribirUsuariosEnJsonSinLock(usuarios);
                 } finally {
                     jsonLock.terminarEscritura();
                 }
@@ -1241,7 +1385,7 @@ public class AccesoDatos {
         return new UsuarioResultSet(obtenerUsuariosParaListar());
     }
 
-    public void registrarMision(int estadoMID, String nombre, String descripcion, Timestamp ini, Timestamp fin) throws SQLException {
+    public int registrarMision(int estadoMID, String nombre, String descripcion, Timestamp ini, Timestamp fin) {
         try {
             misionLock.iniciarEscritura();
             try {
@@ -1265,6 +1409,7 @@ public class AccesoDatos {
 
                 misiones.add(nueva);
                 escribirMisionesEnJsonSinLock(misiones);
+                return nuevoId;
             } finally {
                 misionLock.terminarEscritura();
             }
@@ -1273,24 +1418,42 @@ public class AccesoDatos {
         } catch (IOException e) {
             System.err.println("Error al registrar misión: " + e.getMessage());
         }
+        return -1;
     }
 
-    public void modificarMision(int id, String nombre, String desc, Timestamp ini, Timestamp fin) throws SQLException {
+    public void modificarMision(int usuarioIDLogueado, int id, String nombre, String desc, Timestamp ini, Timestamp fin) {
         try {
             misionLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
                 List<MisionJson> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
+                StringBuilder descChanges = new StringBuilder("Modificacion: ");
                 for (MisionJson m : misiones) {
                     if (m.MisionID == id) {
-                        m.Nombre = nombre;
-                        m.Descripcion = desc;
-                        m.FechaInicioEstimada = tsToString(ini);
-                        m.FechaFinEstimada = tsToString(fin);
+                        if (nombre != null && !nombre.equals(m.Nombre)) {
+                            descChanges.append("Nombre: '").append(m.Nombre).append("' -> '").append(nombre).append("'; ");
+                            m.Nombre = nombre;
+                        }
+                        if (desc != null && !desc.equals(m.Descripcion)) {
+                            descChanges.append("Descripcion: '").append(m.Descripcion).append("' -> '").append(desc).append("'; ");
+                            m.Descripcion = desc;
+                        }
+                        String newIni = tsToString(ini);
+                        if (newIni != null && !newIni.equals(m.FechaInicioEstimada)) {
+                            descChanges.append("FechaInicio: '").append(m.FechaInicioEstimada).append("' -> '").append(newIni).append("'; ");
+                            m.FechaInicioEstimada = newIni;
+                        }
+                        String newFin = tsToString(fin);
+                        if (newFin != null && !newFin.equals(m.FechaFinEstimada)) {
+                            descChanges.append("FechaFin: '").append(m.FechaFinEstimada).append("' -> '").append(newFin).append("'; ");
+                            m.FechaFinEstimada = newFin;
+                        }
                         break;
                     }
                 }
                 escribirMisionesEnJsonSinLock(misiones);
+                String descStr = descChanges.length() > 16 ? descChanges.substring(0, descChanges.length() - 2) : "Sin cambios";
+                registrarLog(usuarioIDLogueado, 2, 1, id, descStr);
             } finally {
                 misionLock.terminarEscritura();
             }
@@ -1301,18 +1464,27 @@ public class AccesoDatos {
         }
     }
 
-    public void actualizarEstadoMision(int id, int estadoID, Integer retrasoInicio, Integer retrasoFin) throws SQLException {
+    public void actualizarEstadoMision(int usuarioIDLogueado, int id, int estadoID, Integer retrasoInicio, Integer retrasoFin) {
         try {
             misionLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
                 List<MisionJson> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
+                int accionID = 0;
                 for (MisionJson m : misiones) {
                     if (m.MisionID == id) {
+                        String estadoAnterior = obtenerNombreEstadoMisionPorId(m.EstadoMID);
                         m.EstadoMID = estadoID;
                         if (retrasoInicio != null) m.RetrasoInicio = retrasoInicio;
                         if (retrasoFin != null) m.RetrasoFin = retrasoFin;
-                        break;
+                        String estadoNuevo = obtenerNombreEstadoMisionPorId(estadoID);
+                        if (estadoID == 5) accionID = 3;
+                        else if (estadoID == 4) accionID = 4;
+                        else accionID = 2;
+                        String desc = "Estado: '" + estadoAnterior + "' -> '" + estadoNuevo + "'";
+                        escribirMisionesEnJsonSinLock(misiones);
+                        registrarLog(usuarioIDLogueado, accionID, 1, id, desc);
+                        return;
                     }
                 }
                 escribirMisionesEnJsonSinLock(misiones);
@@ -1417,7 +1589,7 @@ public class AccesoDatos {
         }
     }
 
-    public void modificarTripulante(int tripulanteID, int estadoTID, int sexoID, int peso, int altura,
+    public void modificarTripulante(int usuarioIDLogueado, int tripulanteID, int estadoTID, int sexoID, int peso, int altura,
             String nombre, String apellido, String imagen, Date fechaNacimiento) {
         try {
             tripulanteLock.iniciarEscritura();
@@ -1425,22 +1597,50 @@ public class AccesoDatos {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
                 List<TripulanteJson> tripulantes = mapper.readValue(ruta.toFile(),
                         new TypeReference<List<TripulanteJson>>() {});
+                StringBuilder desc = new StringBuilder("Modificacion: ");
 
                 for (TripulanteJson t : tripulantes) {
                     if (t.TripulanteID == tripulanteID) {
-                        t.EstadoTID = estadoTID;
-                        t.SexoID = sexoID;
-                        t.Peso = peso;
-                        t.Altura = altura;
-                        t.Nombre = nombre;
-                        t.Apellido = apellido;
-                        t.Imagen = imagen;
-                        t.FechaDeNacimiento = fechaNacimiento.toString();
+                        if (t.EstadoTID != estadoTID) {
+                            desc.append("Estado: '").append(obtenerNombreEstadoTripulantePorId(t.EstadoTID)).append("' -> '").append(obtenerNombreEstadoTripulantePorId(estadoTID)).append("'; ");
+                            t.EstadoTID = estadoTID;
+                        }
+                        if (t.SexoID != sexoID) {
+                            desc.append("Sexo: '").append(obtenerNombreSexoPorId(t.SexoID)).append("' -> '").append(obtenerNombreSexoPorId(sexoID)).append("'; ");
+                            t.SexoID = sexoID;
+                        }
+                        if (t.Peso != peso) {
+                            desc.append("Peso: '").append(t.Peso).append("' -> '").append(peso).append("'; ");
+                            t.Peso = peso;
+                        }
+                        if (t.Altura != altura) {
+                            desc.append("Altura: '").append(t.Altura).append("' -> '").append(altura).append("'; ");
+                            t.Altura = altura;
+                        }
+                        if (nombre != null && !nombre.equals(t.Nombre)) {
+                            desc.append("Nombre: '").append(t.Nombre).append("' -> '").append(nombre).append("'; ");
+                            t.Nombre = nombre;
+                        }
+                        if (apellido != null && !apellido.equals(t.Apellido)) {
+                            desc.append("Apellido: '").append(t.Apellido).append("' -> '").append(apellido).append("'; ");
+                            t.Apellido = apellido;
+                        }
+                        if (imagen != null && !imagen.equals(t.Imagen)) {
+                            desc.append("Imagen: '").append(t.Imagen).append("' -> '").append(imagen).append("'; ");
+                            t.Imagen = imagen;
+                        }
+                        String newFecha = fechaNacimiento.toString();
+                        if (!newFecha.equals(t.FechaDeNacimiento)) {
+                            desc.append("FechaNacimiento: '").append(t.FechaDeNacimiento).append("' -> '").append(newFecha).append("'; ");
+                            t.FechaDeNacimiento = newFecha;
+                        }
                         break;
                     }
                 }
 
                 escribirTripulantesEnJsonSinLock(tripulantes);
+                String descStr = desc.length() > 16 ? desc.substring(0, desc.length() - 2) : "Sin cambios";
+                registrarLog(usuarioIDLogueado, 9, 2, tripulanteID, descStr);
             } finally {
                 tripulanteLock.terminarEscritura();
             }
@@ -1452,7 +1652,7 @@ public class AccesoDatos {
         }
     }
 
-    public void bajaTripulante(int tripulanteID) {
+    public void bajaTripulante(int usuarioIDLogueado, int tripulanteID) {
         try {
             tripulanteLock.iniciarEscritura();
             try {
@@ -1462,8 +1662,13 @@ public class AccesoDatos {
 
                 for (TripulanteJson t : tripulantes) {
                     if (t.TripulanteID == tripulanteID) {
-                        t.EstadoTID = 3; // Retirado
-                        break;
+                        String estadoAnterior = obtenerNombreEstadoTripulantePorId(t.EstadoTID);
+                        t.EstadoTID = 3;
+                        String estadoActual = obtenerNombreEstadoTripulantePorId(t.EstadoTID);
+                        escribirTripulantesEnJsonSinLock(tripulantes);
+                        String desc = "Baja logica: Estado: '" + estadoAnterior + "' -> '" + estadoActual + "'";
+                        registrarLog(usuarioIDLogueado, 10, 2, tripulanteID, desc);
+                        return;
                     }
                 }
 
@@ -1479,7 +1684,7 @@ public class AccesoDatos {
         }
     }
 
-    public void asignarTripulante(int tripID, int misID, Timestamp fecha) throws SQLException {
+    public void asignarTripulante(int usuarioIDLogueado, int tripID, int misID, Timestamp fecha) {
         try {
             misionLock.iniciarEscritura();
             try {
@@ -1491,6 +1696,8 @@ public class AccesoDatos {
                 nuevo.FechaAsignacion = tsToString(fecha);
                 grupos.add(nuevo);
                 escribirGrupoMisionesEnJsonSinLock(grupos);
+                String descLog = "Asignacion: TripulanteID=[" + tripID + "], MisionID=[" + misID + "]";
+                registrarLog(usuarioIDLogueado, 5, 1, misID, descLog);
             } finally {
                 misionLock.terminarEscritura();
             }
@@ -1611,7 +1818,7 @@ public class AccesoDatos {
         return new SimpleResultSet(filas, 4);
     }
 
-    public void registrarCapacidad(int tripulanteID, int aptitudID, int calificacion, String fecha) {
+    public void registrarCapacidad(int usuarioIDLogueado, int tripulanteID, int aptitudID, int calificacion, String fecha) {
         try {
             tripulanteLock.iniciarEscritura();
             try {
@@ -1619,14 +1826,31 @@ public class AccesoDatos {
                 List<CapacidadJson> capacidades = mapper.readValue(ruta.toFile(),
                         new TypeReference<List<CapacidadJson>>() {});
 
-                CapacidadJson nueva = new CapacidadJson();
-                nueva.TripulanteID = tripulanteID;
-                nueva.AptitudID = aptitudID;
-                nueva.Calificacion = calificacion;
-                nueva.FechaCapacidades = fecha;
+                boolean existe = false;
+                for (CapacidadJson c : capacidades) {
+                    if (c.TripulanteID == tripulanteID && c.AptitudID == aptitudID) {
+                        String descFecha = "Calificacion: '" + c.Calificacion + "' -> '" + calificacion + "'";
+                        c.Calificacion = calificacion;
+                        c.FechaCapacidades = fecha;
+                        escribirCapacidadesEnJsonSinLock(capacidades);
+                        registrarLog(usuarioIDLogueado, 12, 5, tripulanteID, descFecha);
+                        existe = true;
+                        return;
+                    }
+                }
 
-                capacidades.add(nueva);
-                escribirCapacidadesEnJsonSinLock(capacidades);
+                if (!existe) {
+                    CapacidadJson nueva = new CapacidadJson();
+                    nueva.TripulanteID = tripulanteID;
+                    nueva.AptitudID = aptitudID;
+                    nueva.Calificacion = calificacion;
+                    nueva.FechaCapacidades = fecha;
+
+                    capacidades.add(nueva);
+                    escribirCapacidadesEnJsonSinLock(capacidades);
+                    String descLog = "Alta: TripulanteID=[" + tripulanteID + "], AptitudID=[" + aptitudID + "], Calificacion=[" + calificacion + "]";
+                    registrarLog(usuarioIDLogueado, 11, 5, tripulanteID, descLog);
+                }
             } finally {
                 tripulanteLock.terminarEscritura();
             }
@@ -1658,7 +1882,7 @@ public class AccesoDatos {
         }
     }
 
-    public void registrarEvento(int misionID, String titulo, String desc, Timestamp fecha) throws SQLException {
+    public int registrarEvento(int usuarioIDLogueado, int misionID, String titulo, String desc, Timestamp fecha) {
         try {
             eventoLock.iniciarEscritura();
             try {
@@ -1680,6 +1904,9 @@ public class AccesoDatos {
 
                 eventos.add(nuevo);
                 escribirEventosEnJsonSinLock(eventos);
+                String descLog = "Alta: MisionID=[" + misionID + "], Titulo=[" + titulo + "], Descripcion=[" + desc + "]";
+                registrarLog(usuarioIDLogueado, 6, 3, nuevoId, descLog);
+                return nuevoId;
             } finally {
                 eventoLock.terminarEscritura();
             }
@@ -1688,9 +1915,10 @@ public class AccesoDatos {
         } catch (IOException e) {
             System.err.println("Error al registrar evento: " + e.getMessage());
         }
+        return -1;
     }
 
-    public void bajaEvento(int eventoID) throws SQLException {
+    public void bajaEvento(int usuarioIDLogueado, int eventoID) {
         try {
             eventoLock.iniciarEscritura();
             try {
@@ -1698,8 +1926,13 @@ public class AccesoDatos {
                 List<EventoJson> eventos = mapper.readValue(ruta.toFile(), new TypeReference<List<EventoJson>>() {});
                 for (EventoJson e : eventos) {
                     if (e.EventoID == eventoID) {
+                        String estadoAnterior = obtenerNombreEstadoEventoPorId(e.EstadoEID);
                         e.EstadoEID = 2;
-                        break;
+                        String estadoActual = obtenerNombreEstadoEventoPorId(e.EstadoEID);
+                        escribirEventosEnJsonSinLock(eventos);
+                        String desc = "Baja logica: Estado: '" + estadoAnterior + "' -> '" + estadoActual + "'";
+                        registrarLog(usuarioIDLogueado, 7, 3, eventoID, desc);
+                        return;
                     }
                 }
                 escribirEventosEnJsonSinLock(eventos);
@@ -1746,9 +1979,40 @@ public class AccesoDatos {
         return new SimpleResultSet(filas, 5);
     }
 
-    public ResultSet verLogs() throws SQLException {
-        Connection con = ConexionBD.getConexion();
-        CallableStatement cs = con.prepareCall("{CALL VerLogs()}");
-        return cs.executeQuery();
+    public ResultSet verLogs() {
+        List<RegistroJson> registros = leerRegistrosDesdeJson();
+        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
+        List<RolJson> roles = leerRolesDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (RegistroJson r : registros) {
+            String nombreUsuario = "";
+            String nombreRol = "";
+            for (UsuarioJson u : usuarios) {
+                if (u.UsuarioID == r.UsuarioID) {
+                    nombreUsuario = u.Usuario != null ? u.Usuario : "";
+                    for (RolJson rol : roles) {
+                        if (rol.RolID == u.RolID) {
+                            nombreRol = rol.Rol;
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+            String nombreAccion = obtenerNombreAccionPorId(r.AccionMID);
+            String nombreEntidad = obtenerNombreEntidadPorId(r.TipoEntidadID);
+            filas.add(new String[]{
+                String.valueOf(r.RegistroID),
+                nombreUsuario,
+                nombreRol,
+                nombreAccion != null ? nombreAccion : "",
+                nombreEntidad != null ? nombreEntidad : "",
+                String.valueOf(r.EntidadID),
+                r.FechaHora != null ? r.FechaHora : "",
+                r.Descripcion != null ? r.Descripcion : ""
+            });
+        }
+        filas.sort((a, b) -> b[6].compareTo(a[6]));
+        return new SimpleResultSet(filas, 8);
     }
 }
