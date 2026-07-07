@@ -1591,41 +1591,49 @@ public class AccesoDatos {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
                 List<TripulanteJson> tripulantes = mapper.readValue(ruta.toFile(),
                         new TypeReference<List<TripulanteJson>>() {});
-                StringBuilder desc = new StringBuilder("Modificacion: ");
+                StringBuilder desc = new StringBuilder();
 
                 for (TripulanteJson t : tripulantes) {
                     if (t.TripulanteID == tripulanteID) {
                         if (t.EstadoTID != estadoTID) {
-                            desc.append("Estado: '").append(obtenerNombreEstadoTripulantePorId(t.EstadoTID)).append("' -> '").append(obtenerNombreEstadoTripulantePorId(estadoTID)).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Estado:").append(obtenerNombreEstadoTripulantePorId(t.EstadoTID)).append("->").append(obtenerNombreEstadoTripulantePorId(estadoTID));
                             t.EstadoTID = estadoTID;
                         }
                         if (t.SexoID != sexoID) {
-                            desc.append("Sexo: '").append(obtenerNombreSexoPorId(t.SexoID)).append("' -> '").append(obtenerNombreSexoPorId(sexoID)).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Sexo:").append(obtenerNombreSexoPorId(t.SexoID)).append("->").append(obtenerNombreSexoPorId(sexoID));
                             t.SexoID = sexoID;
                         }
                         if (t.Peso != peso) {
-                            desc.append("Peso: '").append(t.Peso).append("' -> '").append(peso).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Peso:").append(t.Peso).append("->").append(peso);
                             t.Peso = peso;
                         }
                         if (t.Altura != altura) {
-                            desc.append("Altura: '").append(t.Altura).append("' -> '").append(altura).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Altura:").append(t.Altura).append("->").append(altura);
                             t.Altura = altura;
                         }
                         if (nombre != null && !nombre.equals(t.Nombre)) {
-                            desc.append("Nombre: '").append(t.Nombre).append("' -> '").append(nombre).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Nombre:").append(t.Nombre).append("->").append(nombre);
                             t.Nombre = nombre;
                         }
                         if (apellido != null && !apellido.equals(t.Apellido)) {
-                            desc.append("Apellido: '").append(t.Apellido).append("' -> '").append(apellido).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Apellido:").append(t.Apellido).append("->").append(apellido);
                             t.Apellido = apellido;
                         }
                         if (imagen != null && !imagen.equals(t.Imagen)) {
-                            desc.append("Imagen: '").append(t.Imagen).append("' -> '").append(imagen).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Imagen:").append(t.Imagen).append("->").append(imagen);
                             t.Imagen = imagen;
                         }
                         String newFecha = fechaNacimiento.toString();
                         if (!newFecha.equals(t.FechaDeNacimiento)) {
-                            desc.append("FechaNacimiento: '").append(t.FechaDeNacimiento).append("' -> '").append(newFecha).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("FechaNacimiento:").append(t.FechaDeNacimiento).append("->").append(newFecha);
                             t.FechaDeNacimiento = newFecha;
                         }
                         break;
@@ -1633,7 +1641,7 @@ public class AccesoDatos {
                 }
 
                 escribirTripulantesEnJsonSinLock(tripulantes);
-                String descStr = desc.length() > 16 ? desc.substring(0, desc.length() - 2) : "Sin cambios";
+                String descStr = desc.length() > 0 ? desc.toString() : "Sin cambios";
                 registrarLog(usuarioIDLogueado, 9, 2, tripulanteID, descStr);
             } finally {
                 tripulanteLock.terminarEscritura();
