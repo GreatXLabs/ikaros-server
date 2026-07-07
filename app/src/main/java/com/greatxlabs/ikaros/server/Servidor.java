@@ -35,7 +35,7 @@ public class Servidor {
 
                 String mensaje;
                 while ((mensaje = entrada.readLine()) != null) {
-                    System.out.println("[" + Thread.currentThread().getName() + "] Solicitud: " + mensaje);
+                    System.out.println("[" + Thread.currentThread().getName() + "] Solicitud: " + enmascararClave(mensaje));
 
                     String respuesta = protocolo.procesar(mensaje);
 
@@ -48,6 +48,23 @@ public class Servidor {
                 System.out.println("[" + Thread.currentThread().getName() + "] Cliente desconectado.");
                 LogSistema.registrar("DESCONEXION " + direccionCliente);
             }
+        }
+
+        private static String enmascararClave(String mensaje) {
+            String[] partes = mensaje.split("\\|", -1);
+            if (partes.length == 0) return mensaje;
+
+            int indiceClave;
+            switch (partes[0]) {
+                case "LOGIN": indiceClave = 2; break;
+                case "REGISTRAR_USUARIO": indiceClave = 3; break;
+                case "MODIFICAR_USUARIO": indiceClave = 4; break;
+                default: return mensaje;
+            }
+
+            if (indiceClave >= partes.length) return mensaje;
+            partes[indiceClave] = "***";
+            return String.join("|", partes);
         }
     }
 
