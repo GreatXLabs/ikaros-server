@@ -1,5 +1,6 @@
 package com.greatxlabs.ikaros.server;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -1095,7 +1096,7 @@ public class AccesoDatos {
         List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
         for (UsuarioJson u : usuarios) {
             if (u.Usuario != null && u.Usuario.equals(usuario)
-                    && u.Clave != null && u.Clave.equals(clave)
+                    && u.Clave != null && BCrypt.verifyer().verify(clave.toCharArray(), u.Clave).verified
                     && u.EstadoUID == 1) {
                 return true;
             }
@@ -1226,7 +1227,7 @@ public class AccesoDatos {
                 nuevoUsuario.Nombre = nombre;
                 nuevoUsuario.Apellido = apellido;
                 nuevoUsuario.Usuario = usuario;
-                nuevoUsuario.Clave = clave;
+                nuevoUsuario.Clave = BCrypt.withDefaults().hashToString(12, clave.toCharArray());
 
                 usuarios.add(nuevoUsuario);
                 escribirUsuariosEnJsonSinLock(usuarios);
@@ -1275,10 +1276,10 @@ public class AccesoDatos {
                             desc.append("Apellido:").append(u.Apellido).append("->").append(apellido);
                             u.Apellido = apellido;
                         }
-                        if (clave != null && !clave.isEmpty() && !clave.equals(u.Clave)) {
+                        if (clave != null && !clave.isEmpty()) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Clave:").append(u.Clave).append("->").append(clave);
-                            u.Clave = clave;
+                            desc.append("Clave: ***");
+                            u.Clave = BCrypt.withDefaults().hashToString(12, clave.toCharArray());
                         }
                         encontrado = true;
                         break;
@@ -1298,16 +1299,6 @@ public class AccesoDatos {
         } catch (IOException e) {
             System.err.println("Error al modificar usuario: " + e.getMessage());
         }
-    }
-
-    public String obtenerClaveUsuario(String usuario) {
-        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
-        for (UsuarioJson u : usuarios) {
-            if (u.Usuario != null && u.Usuario.equals(usuario) && u.EstadoUID == 1) {
-                return u.Clave;
-            }
-        }
-        return "";
     }
 
     public void bajaUsuario(int usuarioIDLogueado, int usuarioID) {

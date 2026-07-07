@@ -138,7 +138,7 @@ public class Protocolo {
 			if (partes.length < 8) return "ERROR|E99|Parámetros insuficientes";
 			int usuarioID = parseEntero(partes[2], "usuarioID");
 			String usuario = partes[3];
-			String clave = partes[4].isEmpty() ? accesoDatos.obtenerClaveUsuario(usuario) : partes[4];
+			String clave = partes[4].isEmpty() ? null : partes[4];
 			String nombre = partes[5];
 			String apellido = partes[6];
 			String rol = partes[7];

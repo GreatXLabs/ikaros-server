@@ -6,7 +6,7 @@
     "Nombre": "Jefe",
     "Apellido": "Jefe",
     "Usuario": "Jefe",
-    "Clave": "Jefe123"
+    "Clave": "$2a$12$yedP8WPiUfj2Ad1zVz6.DeBGYrsP9mASy8Ta5OwUn8lXEMiPHIoA6"
   },
   {
     "UsuarioID": 2,
@@ -15,7 +15,7 @@
     "Nombre": "RRHH",
     "Apellido": "RRHH",
     "Usuario": "RRHH",
-    "Clave": "RRHH123"
+    "Clave": "$2a$12$5xNos98TAXtX6kNLxENjSeWuBLgJ1XzK.IEWAHqk8S7BJpY68Imse"
   },
   {
     "UsuarioID": 3,
@@ -24,7 +24,7 @@
     "Nombre": "Asignador",
     "Apellido": "Asignador",
     "Usuario": "Asignador",
-    "Clave": "Asignador123"
+    "Clave": "$2a$12$B32NbUT.Ol0n2OE7XPRtTOGgSsJIp5qujgJqCav1vR8LuZFvs/DK6"
   },
   {
     "UsuarioID": 4,
@@ -33,7 +33,7 @@
     "Nombre": "Coordinador",
     "Apellido": "Coordinador",
     "Usuario": "Coordinador",
-    "Clave": "Coordinador123"
+    "Clave": "$2a$12$walY4/3Rk4.5nqKOZQNuVO1kD0.f1UeClqFce/N5OxSINurgwZG0q"
   },
   {
     "UsuarioID": 5,
@@ -42,6 +42,6 @@
     "Nombre": "Registrador",
     "Apellido": "Registrador",
     "Usuario": "Registrador",
-    "Clave": "Registrador123"
+    "Clave": "$2a$12$rNX/F4iUwkDmWZuvnzCHh.8aikA7/8Ng6iQf63a9M37y75FZcAcIq"
   }
 ]
