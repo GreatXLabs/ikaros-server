@@ -137,6 +137,8 @@ public class Protocolo {
 		case "MODIFICAR_USUARIO": {
 			if (partes.length < 8) return "ERROR|E99|Parámetros insuficientes";
 			int usuarioID = parseEntero(partes[2], "usuarioID");
+			if (accesoDatos.isUsuarioInactivo(usuarioID))
+				return "ERROR|E08|No se puede modificar un usuario que está inactivo";
 			String usuario = partes[3];
 			String clave = partes[4].isEmpty() ? accesoDatos.obtenerClaveUsuario(usuario) : partes[4];
 			String nombre = partes[5];
@@ -147,6 +149,9 @@ public class Protocolo {
 		}
 		case "BAJA_USUARIO": {
 			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int usuarioID = parseEntero(partes[2], "usuarioID");
+			if (accesoDatos.isUsuarioInactivo(usuarioID))
+				return "ERROR|E08|El usuario con ID " + usuarioID + " ya está inactivo";
 			accesoDatos.bajaUsuario(loggedInUserID, partes[2]);
 			return "OK|Usuario dado de baja";
 		}
@@ -181,6 +186,8 @@ public class Protocolo {
 			Timestamp fechaFin = parseTimestamp(partes[6], "fechaFin");
 			if (!accesoDatos.existeMision(misionID))
 				return "ERROR|E07|La misión con ID " + misionID + " no existe";
+			if (accesoDatos.isMisionTerminada(misionID))
+				return "ERROR|E08|No se puede modificar una misión que está finalizada o cancelada";
 			accesoDatos.modificarMision(loggedInUserID, misionID, nombre, descripcion, fechaInicio, fechaFin);
 			return "OK|Misión modificada";
 		}
@@ -192,6 +199,8 @@ public class Protocolo {
 			Integer retrasoFin = partes.length > 5 && !partes[5].isEmpty() ? parseEntero(partes[5], "retrasoFin") : null;
 			if (!accesoDatos.existeMision(misionID))
 				return "ERROR|E07|La misión con ID " + misionID + " no existe";
+			if (accesoDatos.isMisionTerminada(misionID))
+				return "ERROR|E08|No se puede actualizar el estado de una misión que está finalizada o cancelada";
 			accesoDatos.actualizarEstadoMision(loggedInUserID, misionID, CacheMaestra.getEstadoMisionID(estado), retrasoInicio, retrasoFin);
 			return "OK|Estado actualizado";
 		}
@@ -234,6 +243,10 @@ public class Protocolo {
 		case "MODIFICAR_TRIPULANTE": {
 			if (partes.length < 11) return "ERROR|E99|Parámetros insuficientes";
 			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			if (!accesoDatos.existeTripulante(tripulanteID))
+				return "ERROR|E07|El tripulante con ID " + tripulanteID + " no existe";
+			if (accesoDatos.isTripulanteRetirado(tripulanteID))
+				return "ERROR|E08|No se puede modificar un tripulante que está retirado";
 			String estado = partes[3];
 			String sexo = partes[4];
 			Date fechaNacimiento = parseFecha(partes[5], "fechaNacimiento");
@@ -242,8 +255,6 @@ public class Protocolo {
 			String nombre = partes[8];
 			String apellido = partes[9];
 			String imagen = partes[10];
-			if (!accesoDatos.existeTripulante(tripulanteID))
-				return "ERROR|E07|El tripulante con ID " + tripulanteID + " no existe";
 			accesoDatos.modificarTripulante(loggedInUserID, tripulanteID, CacheMaestra.getEstadoTripulanteID(estado),
 				obtenerSexoID(sexo), peso, altura, nombre, apellido, imagen, fechaNacimiento);
 			return "OK|Tripulante modificado";
@@ -253,18 +264,24 @@ public class Protocolo {
 			int tripulanteID = parseEntero(partes[2], "tripulanteID");
 			if (!accesoDatos.existeTripulante(tripulanteID))
 				return "ERROR|E07|El tripulante con ID " + tripulanteID + " no existe";
+			if (accesoDatos.isTripulanteRetirado(tripulanteID))
+				return "ERROR|E08|El tripulante con ID " + tripulanteID + " ya está retirado";
 			accesoDatos.bajaTripulante(loggedInUserID, tripulanteID);
 			return "OK|Tripulante dado de baja";
 		}
 		case "ELIMINAR_CAPACIDADES": {
 			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
 			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			if (accesoDatos.isTripulanteRetirado(tripulanteID))
+				return "ERROR|E08|No se pueden eliminar capacidades de un tripulante que está retirado";
 			accesoDatos.eliminarCapacidades(tripulanteID);
 			return "OK|Capacidades eliminadas";
 		}
 		case "REGISTRAR_CAPACIDAD": {
 			if (partes.length < 6) return "ERROR|E99|Parámetros insuficientes";
 			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			if (accesoDatos.isTripulanteRetirado(tripulanteID))
+				return "ERROR|E08|No se puede registrar capacidad de un tripulante que está retirado";
 			int aptitudID = parseEntero(partes[3], "aptitudID");
 			int calificacion = parseEntero(partes[4], "calificacion");
 			String fecha = partes[5];
@@ -279,6 +296,8 @@ public class Protocolo {
 				return "ERROR|E07|El tripulante con ID " + tripulanteID + " no existe";
 			if (!accesoDatos.existeMision(misionID))
 				return "ERROR|E07|La misión con ID " + misionID + " no existe";
+			if (accesoDatos.isTripulanteRetirado(tripulanteID))
+				return "ERROR|E08|No se puede asignar a una misión un tripulante que está retirado";
 			accesoDatos.asignarTripulante(loggedInUserID, tripulanteID, misionID, new Timestamp(System.currentTimeMillis()));
 			return "OK|Tripulante asignado a misión";
 		}

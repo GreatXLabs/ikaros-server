@@ -33,6 +33,7 @@ import java.util.Date;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+
 public class AccesoDatos {
 
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -1809,6 +1810,30 @@ public class AccesoDatos {
         List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
         for (TripulanteJson t : tripulantes) {
             if (t.TripulanteID == id) return true;
+        }
+        return false;
+    }
+
+    public boolean isTripulanteRetirado(int id) {
+        List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
+        for (TripulanteJson t : tripulantes) {
+            if (t.TripulanteID == id) return t.EstadoTID == 3;
+        }
+        return false;
+    }
+
+    public boolean isMisionTerminada(int id) {
+        List<MisionJson> misiones = leerMisionesDesdeJson();
+        for (MisionJson m : misiones) {
+            if (m.MisionID == id) return m.EstadoMID == 4 || m.EstadoMID == 5;
+        }
+        return false;
+    }
+
+    public boolean isUsuarioInactivo(int id) {
+        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
+        for (UsuarioJson u : usuarios) {
+            if (u.UsuarioID == id) return u.EstadoUID == 2;
         }
         return false;
     }

@@ -3,13 +3,6 @@ package com.greatxlabs.ikaros.server;
 import java.net.*;
 import java.io.*;
 
-/**
- * Punto de entrada del servidor Ikaros.
- *
- * Modo CONCURRENTE: el hilo principal acepta conexiones y lanza
- * un hilo nuevo por cada cliente. Cada hilo ejecuta su propio
- * loop de lectura/procesamiento/escritura con su instancia de Protocolo.
- */
 public class Servidor {
 
     private static class ManejadorCliente implements Runnable {

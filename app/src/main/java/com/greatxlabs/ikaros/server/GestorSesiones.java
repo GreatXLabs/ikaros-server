@@ -80,7 +80,7 @@ public class GestorSesiones {
 
             String token = UUID.randomUUID().toString().substring(0, 8);
             int usuarioID = datos.usuarioID;
-            String rol = datos.rol; // ya viene del JSON
+            String rol = datos.rol;
 
             semSesiones.iniciarEscritura();
             try {
