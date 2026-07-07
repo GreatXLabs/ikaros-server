@@ -130,7 +130,7 @@ public class Protocolo {
 			String apellido = partes[5];
 			String rol = partes[6];
 			int nuevoId = accesoDatos.registrarUsuario(CacheMaestra.getRolID(rol), usuario, nombre, apellido, clave);
-			String descLog = "Alta: Usuario=[" + usuario + "], Nombre=[" + nombre + "], Apellido=[" + apellido + "], Rol=[" + rol + "]";
+			String descLog = "Usuario=" + usuario + "|Nombre=" + nombre + "|Apellido=" + apellido + "|Rol=" + rol;
 			accesoDatos.registrarLog(loggedInUserID, 13, 4, nuevoId, descLog);
 			return "OK|Usuario registrado";
 		}
@@ -168,7 +168,7 @@ public class Protocolo {
 			Timestamp fechaInicio = parseTimestamp(partes[5], "fechaInicio");
 			Timestamp fechaFin = parseTimestamp(partes[6], "fechaFin");
 			int nuevoId = accesoDatos.registrarMision(CacheMaestra.getEstadoMisionID("PLANIFICADA"), nombre, descripcion, fechaInicio, fechaFin);
-			String descLog = "Alta: Nombre=[" + nombre + "], Descripcion=[" + descripcion + "], FechaInicio=[" + fechaInicio + "], FechaFin=[" + fechaFin + "]";
+			String descLog = "Nombre=" + nombre + "|Descripcion=" + descripcion + "|FechaInicio=" + fechaInicio + "|FechaFin=" + fechaFin;
 			accesoDatos.registrarLog(loggedInUserID, 1, 1, nuevoId, descLog);
 			return "OK|Misión registrada";
 		}
@@ -226,7 +226,7 @@ public class Protocolo {
 			);
 			if (rs.next()) {
 				int nuevoId = rs.getInt(1);
-				String descLog = "Alta: Nombre=[" + nombre + "], Apellido=[" + apellido + "], Sexo=[" + sexo + "], Peso=[" + peso + "], Altura=[" + altura + "]";
+				String descLog = "Nombre=" + nombre + "|Apellido=" + apellido + "|Sexo=" + sexo + "|Peso=" + peso + "|Altura=" + altura;
 				accesoDatos.registrarLog(loggedInUserID, 8, 2, nuevoId, descLog);
 			}
 			return formatearDetalle(rs, 1);

@@ -1251,28 +1251,33 @@ public class AccesoDatos {
                 List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
                         new TypeReference<List<UsuarioJson>>() {});
                 boolean encontrado = false;
-                StringBuilder desc = new StringBuilder("Modificacion: ");
+                StringBuilder desc = new StringBuilder();
 
                 for (UsuarioJson u : usuarios) {
                     if (u.UsuarioID == usuarioID) {
                         if (rolID != 0 && u.RolID != rolID) {
-                            desc.append("Rol: '").append(obtenerNombreRolPorId(u.RolID)).append("' -> '").append(obtenerNombreRolPorId(rolID)).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Rol:").append(obtenerNombreRolPorId(u.RolID)).append("->").append(obtenerNombreRolPorId(rolID));
                             u.RolID = rolID;
                         }
                         if (usuario != null && !usuario.isEmpty() && !usuario.equals(u.Usuario)) {
-                            desc.append("Usuario: '").append(u.Usuario).append("' -> '").append(usuario).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Usuario:").append(u.Usuario).append("->").append(usuario);
                             u.Usuario = usuario;
                         }
                         if (nombre != null && !nombre.isEmpty() && !nombre.equals(u.Nombre)) {
-                            desc.append("Nombre: '").append(u.Nombre).append("' -> '").append(nombre).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Nombre:").append(u.Nombre).append("->").append(nombre);
                             u.Nombre = nombre;
                         }
                         if (apellido != null && !apellido.isEmpty() && !apellido.equals(u.Apellido)) {
-                            desc.append("Apellido: '").append(u.Apellido).append("' -> '").append(apellido).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Apellido:").append(u.Apellido).append("->").append(apellido);
                             u.Apellido = apellido;
                         }
                         if (clave != null && !clave.isEmpty() && !clave.equals(u.Clave)) {
-                            desc.append("Clave: '").append(u.Clave).append("' -> '").append(clave).append("'; ");
+                            if (desc.length() > 0) desc.append("|");
+                            desc.append("Clave:").append(u.Clave).append("->").append(clave);
                             u.Clave = clave;
                         }
                         encontrado = true;
@@ -1282,7 +1287,7 @@ public class AccesoDatos {
 
                 if (!encontrado) throw new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioID);
                 escribirUsuariosEnJsonSinLock(usuarios);
-                String descStr = desc.length() > 16 ? desc.substring(0, desc.length() - 2) : "Sin cambios";
+                String descStr = desc.length() > 0 ? desc.toString() : "Sin cambios";
                 registrarLog(usuarioIDLogueado, 14, 4, usuarioID, descStr);
             } finally {
                 jsonLock.terminarEscritura();
@@ -1320,7 +1325,7 @@ public class AccesoDatos {
                         u.EstadoUID = 2;
                         String estadoActual = obtenerNombreEstadoPorId(u.EstadoUID);
                         escribirUsuariosEnJsonSinLock(usuarios);
-                        String desc = "Baja logica: Estado: '" + estadoAnterior + "' -> '" + estadoActual + "'";
+                        String desc = "Estado:" + estadoAnterior + "->" + estadoActual;
                         registrarLog(usuarioIDLogueado, 14, 4, usuarioID, desc);
                         encontrado = true;
                         break;
@@ -1356,7 +1361,7 @@ public class AccesoDatos {
                             u.EstadoUID = 2;
                             String estadoActual = obtenerNombreEstadoPorId(u.EstadoUID);
                             escribirUsuariosEnJsonSinLock(usuarios);
-                            String desc = "Baja logica: Estado: '" + estadoAnterior + "' -> '" + estadoActual + "'";
+                            String desc = "Estado:" + estadoAnterior + "->" + estadoActual;
                             registrarLog(usuarioIDLogueado, 14, 4, u.UsuarioID, desc);
                             encontrado = true;
                             break;
@@ -1421,32 +1426,36 @@ public class AccesoDatos {
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
                 List<MisionJson> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
-                StringBuilder descChanges = new StringBuilder("Modificacion: ");
+                StringBuilder descChanges = new StringBuilder();
                 for (MisionJson m : misiones) {
                     if (m.MisionID == id) {
                         if (nombre != null && !nombre.equals(m.Nombre)) {
-                            descChanges.append("Nombre: '").append(m.Nombre).append("' -> '").append(nombre).append("'; ");
+                            if (descChanges.length() > 0) descChanges.append("|");
+                            descChanges.append("Nombre:").append(m.Nombre).append("->").append(nombre);
                             m.Nombre = nombre;
                         }
                         if (desc != null && !desc.equals(m.Descripcion)) {
-                            descChanges.append("Descripcion: '").append(m.Descripcion).append("' -> '").append(desc).append("'; ");
+                            if (descChanges.length() > 0) descChanges.append("|");
+                            descChanges.append("Descripcion:").append(m.Descripcion).append("->").append(desc);
                             m.Descripcion = desc;
                         }
                         String newIni = tsToString(ini);
                         if (newIni != null && !newIni.equals(m.FechaInicioEstimada)) {
-                            descChanges.append("FechaInicio: '").append(m.FechaInicioEstimada).append("' -> '").append(newIni).append("'; ");
+                            if (descChanges.length() > 0) descChanges.append("|");
+                            descChanges.append("FechaInicio:").append(m.FechaInicioEstimada).append("->").append(newIni);
                             m.FechaInicioEstimada = newIni;
                         }
                         String newFin = tsToString(fin);
                         if (newFin != null && !newFin.equals(m.FechaFinEstimada)) {
-                            descChanges.append("FechaFin: '").append(m.FechaFinEstimada).append("' -> '").append(newFin).append("'; ");
+                            if (descChanges.length() > 0) descChanges.append("|");
+                            descChanges.append("FechaFin:").append(m.FechaFinEstimada).append("->").append(newFin);
                             m.FechaFinEstimada = newFin;
                         }
                         break;
                     }
                 }
                 escribirMisionesEnJsonSinLock(misiones);
-                String descStr = descChanges.length() > 16 ? descChanges.substring(0, descChanges.length() - 2) : "Sin cambios";
+                String descStr = descChanges.length() > 0 ? descChanges.toString() : "Sin cambios";
                 registrarLog(usuarioIDLogueado, 2, 1, id, descStr);
             } finally {
                 misionLock.terminarEscritura();
@@ -1475,7 +1484,7 @@ public class AccesoDatos {
                         if (estadoID == 5) accionID = 3;
                         else if (estadoID == 4) accionID = 4;
                         else accionID = 2;
-                        String desc = "Estado: '" + estadoAnterior + "' -> '" + estadoNuevo + "'";
+                        String desc = "Estado:" + estadoAnterior + "->" + estadoNuevo;
                         escribirMisionesEnJsonSinLock(misiones);
                         registrarLog(usuarioIDLogueado, accionID, 1, id, desc);
                         return;
@@ -1668,7 +1677,7 @@ public class AccesoDatos {
                         t.EstadoTID = 3;
                         String estadoActual = obtenerNombreEstadoTripulantePorId(t.EstadoTID);
                         escribirTripulantesEnJsonSinLock(tripulantes);
-                        String desc = "Baja logica: Estado: '" + estadoAnterior + "' -> '" + estadoActual + "'";
+                        String desc = "Estado:" + estadoAnterior + "->" + estadoActual;
                         registrarLog(usuarioIDLogueado, 10, 2, tripulanteID, desc);
                         return;
                     }
@@ -1698,7 +1707,7 @@ public class AccesoDatos {
                 nuevo.FechaAsignacion = tsToString(fecha);
                 grupos.add(nuevo);
                 escribirGrupoMisionesEnJsonSinLock(grupos);
-                String descLog = "Asignacion: TripulanteID=[" + tripID + "], MisionID=[" + misID + "]";
+                String descLog = "TripulanteID=" + tripID + "|MisionID=" + misID;
                 registrarLog(usuarioIDLogueado, 5, 1, misID, descLog);
             } finally {
                 misionLock.terminarEscritura();
@@ -1831,7 +1840,7 @@ public class AccesoDatos {
                 boolean existe = false;
                 for (CapacidadJson c : capacidades) {
                     if (c.TripulanteID == tripulanteID && c.AptitudID == aptitudID) {
-                        String descFecha = "Calificacion: '" + c.Calificacion + "' -> '" + calificacion + "'";
+                        String descFecha = "Calificacion:" + c.Calificacion + "->" + calificacion;
                         c.Calificacion = calificacion;
                         c.FechaCapacidades = fecha;
                         escribirCapacidadesEnJsonSinLock(capacidades);
@@ -1850,7 +1859,7 @@ public class AccesoDatos {
 
                     capacidades.add(nueva);
                     escribirCapacidadesEnJsonSinLock(capacidades);
-                    String descLog = "Alta: TripulanteID=[" + tripulanteID + "], AptitudID=[" + aptitudID + "], Calificacion=[" + calificacion + "]";
+                    String descLog = "TripulanteID=" + tripulanteID + "|AptitudID=" + aptitudID + "|Calificacion=" + calificacion;
                     registrarLog(usuarioIDLogueado, 11, 5, tripulanteID, descLog);
                 }
             } finally {
@@ -1906,7 +1915,7 @@ public class AccesoDatos {
 
                 eventos.add(nuevo);
                 escribirEventosEnJsonSinLock(eventos);
-                String descLog = "Alta: MisionID=[" + misionID + "], Titulo=[" + titulo + "], Descripcion=[" + desc + "]";
+                String descLog = "MisionID=" + misionID + "|Titulo=" + titulo + "|Descripcion=" + desc;
                 registrarLog(usuarioIDLogueado, 6, 3, nuevoId, descLog);
                 return nuevoId;
             } finally {
@@ -1932,7 +1941,7 @@ public class AccesoDatos {
                         e.EstadoEID = 2;
                         String estadoActual = obtenerNombreEstadoEventoPorId(e.EstadoEID);
                         escribirEventosEnJsonSinLock(eventos);
-                        String desc = "Baja logica: Estado: '" + estadoAnterior + "' -> '" + estadoActual + "'";
+                        String desc = "Estado:" + estadoAnterior + "->" + estadoActual;
                         registrarLog(usuarioIDLogueado, 7, 3, eventoID, desc);
                         return;
                     }
