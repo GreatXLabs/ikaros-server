@@ -140,7 +140,7 @@ public class Protocolo {
 			if (accesoDatos.isUsuarioInactivo(usuarioID))
 				return "ERROR|E08|No se puede modificar un usuario que está inactivo";
 			String usuario = partes[3];
-			String clave = partes[4].isEmpty() ? accesoDatos.obtenerClaveUsuario(usuario) : partes[4];
+			String clave = partes[4].isEmpty() ? null : partes[4];
 			String nombre = partes[5];
 			String apellido = partes[6];
 			String rol = partes[7];
