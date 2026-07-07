@@ -1208,6 +1208,7 @@ public class AccesoDatos {
     }
 
     public int registrarUsuario(int rolID, String usuario, String nombre, String apellido, String clave) {
+        String claveHash = BCrypt.withDefaults().hashToString(12, clave.toCharArray());
         try {
             jsonLock.iniciarEscritura();
             try {
@@ -1227,7 +1228,7 @@ public class AccesoDatos {
                 nuevoUsuario.Nombre = nombre;
                 nuevoUsuario.Apellido = apellido;
                 nuevoUsuario.Usuario = usuario;
-                nuevoUsuario.Clave = BCrypt.withDefaults().hashToString(12, clave.toCharArray());
+                nuevoUsuario.Clave = claveHash;
 
                 usuarios.add(nuevoUsuario);
                 escribirUsuariosEnJsonSinLock(usuarios);
@@ -1245,6 +1246,9 @@ public class AccesoDatos {
     }
 
     public void modificarUsuario(int usuarioIDLogueado, int usuarioID, int rolID, String usuario, String nombre, String apellido, String clave) {
+        String claveHash = (clave != null && !clave.isEmpty())
+                ? BCrypt.withDefaults().hashToString(12, clave.toCharArray())
+                : null;
         try {
             jsonLock.iniciarEscritura();
             try {
@@ -1276,10 +1280,10 @@ public class AccesoDatos {
                             desc.append("Apellido:").append(u.Apellido).append("->").append(apellido);
                             u.Apellido = apellido;
                         }
-                        if (clave != null && !clave.isEmpty()) {
+                        if (claveHash != null) {
                             if (desc.length() > 0) desc.append("|");
                             desc.append("Clave: ***");
-                            u.Clave = BCrypt.withDefaults().hashToString(12, clave.toCharArray());
+                            u.Clave = claveHash;
                         }
                         encontrado = true;
                         break;
