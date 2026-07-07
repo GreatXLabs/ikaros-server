@@ -32,6 +32,8 @@ dependencies {
     implementation libs.dotenv.java
     // Jackson for JSON processing
     implementation libs.jackson
+    // BCrypt for password hashing
+    implementation libs.bcrypt
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
