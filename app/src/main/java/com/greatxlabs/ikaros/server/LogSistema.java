@@ -7,12 +7,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.Semaphore;
 
-/**
- * Log del sistema protegido por un mutex (semaforo binario).
- *
- * Todas las escrituras al archivo sistema.log pasan por el mutex
- * para evitar mezcla de lineas entre hilos concurrentes.
- */
 public class LogSistema {
 
     private static String archivoLog = "sistema.log";

@@ -3,13 +3,6 @@ package com.greatxlabs.ikaros.server;
 import java.net.*;
 import java.io.*;
 
-/**
- * Punto de entrada del servidor Ikaros.
- *
- * Modo CONCURRENTE: el hilo principal acepta conexiones y lanza
- * un hilo nuevo por cada cliente. Cada hilo ejecuta su propio
- * loop de lectura/procesamiento/escritura con su instancia de Protocolo.
- */
 public class Servidor {
 
     private static class ManejadorCliente implements Runnable {
@@ -35,7 +28,7 @@ public class Servidor {
 
                 String mensaje;
                 while ((mensaje = entrada.readLine()) != null) {
-                    System.out.println("[" + Thread.currentThread().getName() + "] Solicitud: " + mensaje);
+                    System.out.println("[" + Thread.currentThread().getName() + "] Solicitud: " + enmascararClave(mensaje));
 
                     String respuesta = protocolo.procesar(mensaje);
 
@@ -48,6 +41,23 @@ public class Servidor {
                 System.out.println("[" + Thread.currentThread().getName() + "] Cliente desconectado.");
                 LogSistema.registrar("DESCONEXION " + direccionCliente);
             }
+        }
+
+        private static String enmascararClave(String mensaje) {
+            String[] partes = mensaje.split("\\|", -1);
+            if (partes.length == 0) return mensaje;
+
+            int indiceClave;
+            switch (partes[0]) {
+                case "LOGIN": indiceClave = 2; break;
+                case "REGISTRAR_USUARIO": indiceClave = 3; break;
+                case "MODIFICAR_USUARIO": indiceClave = 4; break;
+                default: return mensaje;
+            }
+
+            if (indiceClave >= partes.length) return mensaje;
+            partes[indiceClave] = "***";
+            return String.join("|", partes);
         }
     }
 
@@ -65,8 +75,6 @@ public class Servidor {
         System.out.println("Esperando conexiones (Modo Concurrente)...");
 
         try (ServerSocket serverSocket = new ServerSocket(puerto)) {
-            Runtime.getRuntime().addShutdownHook(new Thread(ConexionBD::cerrarConexion));
-
             while (true) {
                 Socket cliente = serverSocket.accept();
                 System.out.println("Cliente conectado: " + cliente.getInetAddress());
@@ -77,8 +85,6 @@ public class Servidor {
             }
         } catch (IOException e) {
             System.err.println("Error crítico en el servidor: " + e.getMessage());
-        } finally {
-            ConexionBD.cerrarConexion();
         }
     }
 }

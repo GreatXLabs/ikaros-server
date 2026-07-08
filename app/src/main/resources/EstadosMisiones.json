@@ -1,0 +1,7 @@
+[
+  { "EstadoMID": 1, "Estado": "Planificada" },
+  { "EstadoMID": 2, "Estado": "Preparada" },
+  { "EstadoMID": 3, "Estado": "En Curso" },
+  { "EstadoMID": 4, "Estado": "Finalizada" },
+  { "EstadoMID": 5, "Estado": "Cancelada" }
+]

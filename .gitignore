@@ -40,3 +40,6 @@ nbproject/private/
 # Configuración local (se genera automáticamente)
 config.properties
 
+# Datos de ejecución (se generan al arrancar el servidor)
+/data/
+
