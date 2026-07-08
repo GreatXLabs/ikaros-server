@@ -10,27 +10,6 @@ import java.util.UUID;
 
 public class GestorSesiones {
 
-    private static class Sesion {
-        int usuarioID;
-        String rol;
-        long ultimaActividad;
-
-        Sesion(int usuarioID, String rol) {
-            this.usuarioID = usuarioID;
-            this.rol = rol;
-            this.ultimaActividad = System.currentTimeMillis();
-        }
-
-        void renovar() {
-            this.ultimaActividad = System.currentTimeMillis();
-        }
-
-        boolean haExpirado() {
-            long treintaMinutosEnMillis = 30 * 60 * 1000;
-            return (System.currentTimeMillis() - ultimaActividad) > treintaMinutosEnMillis;
-        }
-    }
-
     private static final Map<String, Set<String>> PERMISOS_POR_ROL = new HashMap<>();
     static {
         PERMISOS_POR_ROL.put("RRHH", Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
@@ -119,7 +98,7 @@ public class GestorSesiones {
 
             if (operacion.equals("REGISTRAR_LOG")) return true;
 
-            String rol = sesion.rol;
+            String rol = sesion.getRol();
             if (rol.equals("JEFE")) return true;
 
             Set<String> permitidas = PERMISOS_POR_ROL.get(rol);
@@ -171,7 +150,7 @@ public class GestorSesiones {
             try {
                 Sesion sesion = sesionesActivas.get(token);
                 if (sesion != null && !sesion.haExpirado()) {
-                    return sesion.rol;
+                    return sesion.getRol();
                 }
                 return null;
             } finally {
@@ -189,7 +168,7 @@ public class GestorSesiones {
             try {
                 Sesion sesion = sesionesActivas.get(token);
                 if (sesion != null && !sesion.haExpirado()) {
-                    return sesion.usuarioID;
+                    return sesion.getUsuarioID();
                 }
                 return null;
             } finally {
