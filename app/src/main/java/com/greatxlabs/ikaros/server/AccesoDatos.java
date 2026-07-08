@@ -3,7 +3,6 @@ package com.greatxlabs.ikaros.server;
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,7 +10,6 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -95,17 +93,6 @@ public class AccesoDatos {
         }
     }
 
-    private static class UsuarioJson {
-        public int UsuarioID;
-        public int RolID;
-        public int EstadoUID;
-        public String Nombre;
-        public String Apellido;
-        public String Usuario;
-        public String Clave;
-        public UsuarioJson() {}
-    }
-
     private static class RolJson {
         public int RolID;
         public String Rol;
@@ -124,37 +111,16 @@ public class AccesoDatos {
         public EstadoJson() {}
     }
 
-    private static class TripulanteJson {
-        public int TripulanteID;
-        public int EstadoTID;
-        public int SexoID;
-        public int Peso;
-        public int Altura;
-        public String Nombre;
-        public String Apellido;
-        public String Imagen;
-        public String FechaDeNacimiento;
-        public TripulanteJson() {}
-    }
-
-    private static class CapacidadJson {
-        public int TripulanteID;
-        public int AptitudID;
-        public int Calificacion;
-        public String FechaCapacidades;
-        public CapacidadJson() {}
-    }
-
     public static class AptitudJson {
         public int AptitudID;
         public String Aptitud;
         public AptitudJson() {}
     }
 
-    private static class EstadoTripulanteJson {
+    private static class EstadoTripulante {
         public int EstadoTID;
         public String Estado;
-        public EstadoTripulanteJson() {}
+        public EstadoTripulante() {}
     }
 
     private static class SexoJson {
@@ -163,45 +129,23 @@ public class AccesoDatos {
         public SexoJson() {}
     }
 
-    private static class MisionJson {
-        public int MisionID;
-        public int EstadoMID;
-        public Integer RetrasoInicio;
-        public String FechaInicioEstimada;
-        public String FechaFinEstimada;
-        public Integer RetrasoFin;
-        public String Nombre;
-        public String Descripcion;
-        public MisionJson() {}
-    }
-
-    private static class EstadoMisionJson {
+    private static class EstadoMision {
         public int EstadoMID;
         public String Estado;
-        public EstadoMisionJson() {}
+        public EstadoMision() {}
     }
 
-    private static class GrupoMisionJson {
+    private static class GrupoMision {
         public int TripulanteID;
         public int MisionID;
         public String FechaAsignacion;
-        public GrupoMisionJson() {}
+        public GrupoMision() {}
     }
 
-    private static class EventoJson {
-        public int EventoID;
-        public int MisionID;
-        public String Titulo;
-        public String Fecha;
-        public String Descripcion;
-        public int EstadoEID;
-        public EventoJson() {}
-    }
-
-    private static class EstadoEventoJson {
+    private static class EstadoEvento {
         public int EstadoEID;
         public String Estado;
-        public EstadoEventoJson() {}
+        public EstadoEvento() {}
     }
 
     private static class AccionJson {
@@ -216,23 +160,12 @@ public class AccesoDatos {
         public EntidadJson() {}
     }
 
-    private static class RegistroJson {
-        public int RegistroID;
-        public int AccionMID;
-        public int UsuarioID;
-        public int TipoEntidadID;
-        public int EntidadID;
-        public String FechaHora;
-        public String Descripcion;
-        public RegistroJson() {}
-    }
-
-    private List<UsuarioJson> leerUsuariosDesdeJson() {
+    private List<Usuario> leerUsuariosDesdeJson() {
         try {
             jsonLock.iniciarLectura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<UsuarioJson>>() {});
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<Usuario>>() {});
             } finally {
                 jsonLock.terminarLectura();
             }
@@ -245,7 +178,7 @@ public class AccesoDatos {
         }
     }
 
-    private void escribirUsuariosEnJsonSinLock(List<UsuarioJson> usuarios) throws IOException {
+    private void escribirUsuariosEnJsonSinLock(List<Usuario> usuarios) throws IOException {
         Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
         Path tmp  = Files.createTempFile(ruta.getParent(), "Usuarios", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), usuarios);
@@ -290,12 +223,12 @@ public class AccesoDatos {
         }
     }
 
-    private List<TripulanteJson> leerTripulantesDesdeJson() {
+    private List<Tripulante> leerTripulantesDesdeJson() {
         try {
             tripulanteLock.iniciarLectura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<TripulanteJson>>() {});
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<Tripulante>>() {});
             } finally {
                 tripulanteLock.terminarLectura();
             }
@@ -308,7 +241,7 @@ public class AccesoDatos {
         }
     }
 
-    private void escribirTripulantesEnJsonSinLock(List<TripulanteJson> tripulantes) throws IOException {
+    private void escribirTripulantesEnJsonSinLock(List<Tripulante> tripulantes) throws IOException {
         Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
         Path tmp  = Files.createTempFile(ruta.getParent(), "Tripulantes", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), tripulantes);
@@ -317,12 +250,12 @@ public class AccesoDatos {
                 StandardCopyOption.ATOMIC_MOVE);
     }
 
-    private List<CapacidadJson> leerCapacidadesDesdeJson() {
+    private List<Capacidad> leerCapacidadesDesdeJson() {
         try {
             tripulanteLock.iniciarLectura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<CapacidadJson>>() {});
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<Capacidad>>() {});
             } finally {
                 tripulanteLock.terminarLectura();
             }
@@ -335,7 +268,7 @@ public class AccesoDatos {
         }
     }
 
-    private void escribirCapacidadesEnJsonSinLock(List<CapacidadJson> capacidades) throws IOException {
+    private void escribirCapacidadesEnJsonSinLock(List<Capacidad> capacidades) throws IOException {
         Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
         Path tmp  = Files.createTempFile(ruta.getParent(), "Capacidades", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), capacidades);
@@ -354,22 +287,22 @@ public class AccesoDatos {
         }
     }
 
-    private List<EstadoTripulanteJson> leerEstadosTripulantesDesdeJson() {
+    private List<EstadoTripulante> leerEstadosTripulantesDesdeJson() {
         try {
             Path ruta = Path.of(Configuracion.getDataDir(), "EstadosTripulantes.json");
-            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoTripulanteJson>>() {});
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoTripulante>>() {});
         } catch (Exception e) {
             System.err.println("Error al leer EstadosTripulantes.json: " + e.getMessage());
             return Collections.emptyList();
         }
     }
 
-    private List<MisionJson> leerMisionesDesdeJson() {
+    private List<Mision> leerMisionesDesdeJson() {
         try {
             misionLock.iniciarLectura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<Mision>>() {});
             } finally {
                 misionLock.terminarLectura();
             }
@@ -382,7 +315,7 @@ public class AccesoDatos {
         }
     }
 
-    private void escribirMisionesEnJsonSinLock(List<MisionJson> misiones) throws IOException {
+    private void escribirMisionesEnJsonSinLock(List<Mision> misiones) throws IOException {
         Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
         Path tmp = Files.createTempFile(ruta.getParent(), "Misiones", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), misiones);
@@ -391,22 +324,22 @@ public class AccesoDatos {
                 StandardCopyOption.ATOMIC_MOVE);
     }
 
-    private List<EstadoMisionJson> leerEstadosMisionDesdeJson() {
+    private List<EstadoMision> leerEstadosMisionDesdeJson() {
         try {
             Path ruta = Path.of(Configuracion.getDataDir(), "EstadosMisiones.json");
-            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoMisionJson>>() {});
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoMision>>() {});
         } catch (Exception e) {
             System.err.println("Error al leer EstadosMisiones.json: " + e.getMessage());
             return Collections.emptyList();
         }
     }
 
-    private List<GrupoMisionJson> leerGrupoMisionesDesdeJson() {
+    private List<GrupoMision> leerGrupoMisionesDesdeJson() {
         try {
             misionLock.iniciarLectura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "GrupoMisiones.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<GrupoMisionJson>>() {});
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<GrupoMision>>() {});
             } finally {
                 misionLock.terminarLectura();
             }
@@ -419,7 +352,7 @@ public class AccesoDatos {
         }
     }
 
-    private void escribirGrupoMisionesEnJsonSinLock(List<GrupoMisionJson> grupos) throws IOException {
+    private void escribirGrupoMisionesEnJsonSinLock(List<GrupoMision> grupos) throws IOException {
         Path ruta = Path.of(Configuracion.getDataDir(), "GrupoMisiones.json");
         Path tmp = Files.createTempFile(ruta.getParent(), "GrupoMisiones", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), grupos);
@@ -428,12 +361,12 @@ public class AccesoDatos {
                 StandardCopyOption.ATOMIC_MOVE);
     }
 
-    private List<EventoJson> leerEventosDesdeJson() {
+    private List<Evento> leerEventosDesdeJson() {
         try {
             eventoLock.iniciarLectura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<EventoJson>>() {});
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<Evento>>() {});
             } finally {
                 eventoLock.terminarLectura();
             }
@@ -446,7 +379,7 @@ public class AccesoDatos {
         }
     }
 
-    private void escribirEventosEnJsonSinLock(List<EventoJson> eventos) throws IOException {
+    private void escribirEventosEnJsonSinLock(List<Evento> eventos) throws IOException {
         Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
         Path tmp = Files.createTempFile(ruta.getParent(), "Eventos", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), eventos);
@@ -455,10 +388,10 @@ public class AccesoDatos {
                 StandardCopyOption.ATOMIC_MOVE);
     }
 
-    private List<EstadoEventoJson> leerEstadosEventoDesdeJson() {
+    private List<EstadoEvento> leerEstadosEventoDesdeJson() {
         try {
             Path ruta = Path.of(Configuracion.getDataDir(), "EstadosEventos.json");
-            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoEventoJson>>() {});
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoEvento>>() {});
         } catch (Exception e) {
             System.err.println("Error al leer EstadosEventos.json: " + e.getMessage());
             return Collections.emptyList();
@@ -485,12 +418,12 @@ public class AccesoDatos {
         }
     }
 
-    private List<RegistroJson> leerRegistrosDesdeJson() {
+    private List<Registro> leerRegistrosDesdeJson() {
         try {
             registroLock.iniciarLectura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Registros.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<RegistroJson>>() {});
+                return mapper.readValue(ruta.toFile(), new TypeReference<List<Registro>>() {});
             } finally {
                 registroLock.terminarLectura();
             }
@@ -503,7 +436,7 @@ public class AccesoDatos {
         }
     }
 
-    private void escribirRegistrosEnJsonSinLock(List<RegistroJson> registros) throws IOException {
+    private void escribirRegistrosEnJsonSinLock(List<Registro> registros) throws IOException {
         Path ruta = Path.of(Configuracion.getDataDir(), "Registros.json");
         Path tmp = Files.createTempFile(ruta.getParent(), "Registros", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), registros);
@@ -539,8 +472,8 @@ public class AccesoDatos {
     }
 
     private String obtenerNombreEstadoTripulantePorId(int estadoTID) {
-        List<EstadoTripulanteJson> estados = leerEstadosTripulantesDesdeJson();
-        for (EstadoTripulanteJson e : estados) {
+        List<EstadoTripulante> estados = leerEstadosTripulantesDesdeJson();
+        for (EstadoTripulante e : estados) {
             if (e.EstadoTID == estadoTID) return e.Estado;
         }
         return null;
@@ -583,25 +516,25 @@ public class AccesoDatos {
     }
 
     private String obtenerNombreEstadoMisionPorId(int estadoMID) {
-        List<EstadoMisionJson> estados = leerEstadosMisionDesdeJson();
-        for (EstadoMisionJson e : estados) {
+        List<EstadoMision> estados = leerEstadosMisionDesdeJson();
+        for (EstadoMision e : estados) {
             if (e.EstadoMID == estadoMID) return e.Estado;
         }
         return null;
     }
 
     private String obtenerNombreEstadoEventoPorId(int estadoEID) {
-        List<EstadoEventoJson> estados = leerEstadosEventoDesdeJson();
-        for (EstadoEventoJson e : estados) {
+        List<EstadoEvento> estados = leerEstadosEventoDesdeJson();
+        for (EstadoEvento e : estados) {
             if (e.EstadoEID == estadoEID) return e.Estado;
         }
         return null;
     }
 
     private String obtenerNombreMisionPorId(int misionID) {
-        List<MisionJson> misiones = leerMisionesDesdeJson();
-        for (MisionJson m : misiones) {
-            if (m.MisionID == misionID) return m.Nombre;
+        List<Mision> misiones = leerMisionesDesdeJson();
+        for (Mision m : misiones) {
+            if (m.getMisionID() == misionID) return m.getNombre();
         }
         return null;
     }
@@ -1087,19 +1020,19 @@ public class AccesoDatos {
 
     private List<Map<String, Object>> obtenerUsuariosParaListar() {
         try {
-            List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
+            List<Usuario> usuarios = leerUsuariosDesdeJson();
 
             List<Map<String, Object>> resultado = new ArrayList<>();
-            for (UsuarioJson usuario : usuarios) {
+            for (Usuario usuario : usuarios) {
                 Map<String, Object> fila = new HashMap<>();
-                fila.put("ID", usuario.UsuarioID);
-                fila.put("USUARIO", usuario.Usuario);
-                fila.put("NOMBRE", usuario.Nombre);
-                fila.put("APELLIDO", usuario.Apellido);
-                fila.put("CLAVE", usuario.Clave);
-                fila.put("ROLNOMBRE", obtenerNombreRolPorId(usuario.RolID));
-                fila.put("ROLID", usuario.RolID);
-                fila.put("ESTADONOMBRE", obtenerNombreEstadoPorId(usuario.EstadoUID));
+                fila.put("ID", usuario.getUsuarioID());
+                fila.put("USUARIO", usuario.getUsuario());
+                fila.put("NOMBRE", usuario.getNombre());
+                fila.put("APELLIDO", usuario.getApellido());
+                fila.put("CLAVE", usuario.getClave());
+                fila.put("ROLNOMBRE", obtenerNombreRolPorId(usuario.getRolID()));
+                fila.put("ROLID", usuario.getRolID());
+                fila.put("ESTADONOMBRE", obtenerNombreEstadoPorId(usuario.getEstadoUID()));
                 resultado.add(fila);
             }
             return resultado;
@@ -1110,11 +1043,11 @@ public class AccesoDatos {
     }
 
     public boolean validarLogin(String usuario, String clave) {
-        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
-        for (UsuarioJson u : usuarios) {
-            if (u.Usuario != null && u.Usuario.equals(usuario)
-                    && u.Clave != null && BCrypt.verifyer().verify(clave.toCharArray(), u.Clave).verified
-                    && u.EstadoUID == 1) {
+        List<Usuario> usuarios = leerUsuariosDesdeJson();
+        for (Usuario u : usuarios) {
+            if (u.getUsuario() != null && u.getUsuario().equals(usuario)
+                    && u.getClave() != null && BCrypt.verifyer().verify(clave.toCharArray(), u.getClave()).verified
+                    && u.getEstadoUID() == 1) {
                 return true;
             }
         }
@@ -1122,12 +1055,12 @@ public class AccesoDatos {
     }
 
     public UsuarioLoginResult obtenerDatosUsuarioParaLogin(String usuario) {
-        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
-        for (UsuarioJson u : usuarios) {
-            if (u.Usuario != null && u.Usuario.equals(usuario) && u.EstadoUID == 1) {
+        List<Usuario> usuarios = leerUsuariosDesdeJson();
+        for (Usuario u : usuarios) {
+            if (u.getUsuario() != null && u.getUsuario().equals(usuario) && u.getEstadoUID() == 1) {
                 UsuarioLoginResult res = new UsuarioLoginResult();
-                res.usuarioID = u.UsuarioID;
-                res.rol = obtenerNombreRolPorId(u.RolID);
+                res.usuarioID = u.getUsuarioID();
+                res.rol = obtenerNombreRolPorId(u.getRolID());
                 return res;
             }
         }
@@ -1153,27 +1086,27 @@ public class AccesoDatos {
     }
 
     public ResultSet listarEstadosMision() throws SQLException {
-        List<EstadoMisionJson> estados = leerEstadosMisionDesdeJson();
+        List<EstadoMision> estados = leerEstadosMisionDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (EstadoMisionJson e : estados) {
+        for (EstadoMision e : estados) {
             filas.add(new String[]{String.valueOf(e.EstadoMID), e.Estado});
         }
         return new SimpleResultSet(filas, 2);
     }
 
     public ResultSet listarEstadosTripulante() {
-        List<EstadoTripulanteJson> estados = leerEstadosTripulantesDesdeJson();
+        List<EstadoTripulante> estados = leerEstadosTripulantesDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (EstadoTripulanteJson e : estados) {
+        for (EstadoTripulante e : estados) {
             filas.add(new String[]{String.valueOf(e.EstadoTID), e.Estado});
         }
         return new SimpleResultSet(filas, 2);
     }
 
     public ResultSet listarEstadosEvento() throws SQLException {
-        List<EstadoEventoJson> estados = leerEstadosEventoDesdeJson();
+        List<EstadoEvento> estados = leerEstadosEventoDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (EstadoEventoJson e : estados) {
+        for (EstadoEvento e : estados) {
             filas.add(new String[]{String.valueOf(e.EstadoEID), e.Estado});
         }
         return new SimpleResultSet(filas, 2);
@@ -1184,22 +1117,15 @@ public class AccesoDatos {
             registroLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Registros.json");
-                List<RegistroJson> registros = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<RegistroJson>>() {});
+                List<Registro> registros = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<Registro>>() {});
 
                 int nuevoId = 1;
-                for (RegistroJson r : registros) {
-                    if (r.RegistroID >= nuevoId) nuevoId = r.RegistroID + 1;
+                for (Registro r : registros) {
+                    if (r.getRegistroID() >= nuevoId) nuevoId = r.getRegistroID() + 1;
                 }
 
-                RegistroJson nuevo = new RegistroJson();
-                nuevo.RegistroID = nuevoId;
-                nuevo.AccionMID = accionID;
-                nuevo.UsuarioID = usuarioID;
-                nuevo.TipoEntidadID = tipoEntidadID;
-                nuevo.EntidadID = entidadID;
-                nuevo.FechaHora = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                nuevo.Descripcion = descripcion != null ? descripcion : "";
+                Registro nuevo = new Registro(nuevoId, accionID, usuarioID, tipoEntidadID, entidadID, descripcion);
 
                 registros.add(nuevo);
                 escribirRegistrosEnJsonSinLock(registros);
@@ -1215,10 +1141,10 @@ public class AccesoDatos {
     }
 
     public int obtenerUsuarioID(String usuario) {
-        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
-        for (UsuarioJson u : usuarios) {
-            if (u.Usuario != null && u.Usuario.equals(usuario) && u.EstadoUID == 1) {
-                return u.UsuarioID;
+        List<Usuario> usuarios = leerUsuariosDesdeJson();
+        for (Usuario u : usuarios) {
+            if (u.getUsuario() != null && u.getUsuario().equals(usuario) && u.getEstadoUID() == 1) {
+                return u.getUsuarioID();
             }
         }
         throw new IllegalArgumentException("Usuario no encontrado: " + usuario);
@@ -1230,22 +1156,22 @@ public class AccesoDatos {
             jsonLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
-                List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<UsuarioJson>>() {});
+                List<Usuario> usuarios = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<Usuario>>() {});
 
                 int nuevoId = 1;
-                for (UsuarioJson u : usuarios) {
-                    if (u.UsuarioID >= nuevoId) nuevoId = u.UsuarioID + 1;
+                for (Usuario u : usuarios) {
+                    if (u.getUsuarioID() >= nuevoId) nuevoId = u.getUsuarioID() + 1;
                 }
 
-                UsuarioJson nuevoUsuario = new UsuarioJson();
-                nuevoUsuario.UsuarioID = nuevoId;
-                nuevoUsuario.RolID = rolID;
-                nuevoUsuario.EstadoUID = 1;
-                nuevoUsuario.Nombre = nombre;
-                nuevoUsuario.Apellido = apellido;
-                nuevoUsuario.Usuario = usuario;
-                nuevoUsuario.Clave = claveHash;
+                Usuario nuevoUsuario = new Usuario();
+                nuevoUsuario.setUsuarioID(nuevoId);
+                nuevoUsuario.setRolID(rolID);
+                nuevoUsuario.setEstadoUID(1);
+                nuevoUsuario.setNombre(nombre);
+                nuevoUsuario.setApellido(apellido);
+                nuevoUsuario.setUsuario(usuario);
+                nuevoUsuario.setClave(claveHash);
 
                 usuarios.add(nuevoUsuario);
                 escribirUsuariosEnJsonSinLock(usuarios);
@@ -1270,37 +1196,37 @@ public class AccesoDatos {
             jsonLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
-                List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<UsuarioJson>>() {});
+                List<Usuario> usuarios = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<Usuario>>() {});
                 boolean encontrado = false;
                 StringBuilder desc = new StringBuilder();
 
-                for (UsuarioJson u : usuarios) {
-                    if (u.UsuarioID == usuarioID) {
-                        if (rolID != 0 && u.RolID != rolID) {
+                for (Usuario u : usuarios) {
+                    if (u.getUsuarioID() == usuarioID) {
+                        if (rolID != 0 && u.getRolID() != rolID) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Rol:").append(obtenerNombreRolPorId(u.RolID)).append("->").append(obtenerNombreRolPorId(rolID));
-                            u.RolID = rolID;
+                            desc.append("Rol:").append(obtenerNombreRolPorId(u.getRolID())).append("->").append(obtenerNombreRolPorId(rolID));
+                            u.setRolID(rolID);
                         }
-                        if (usuario != null && !usuario.isEmpty() && !usuario.equals(u.Usuario)) {
+                        if (usuario != null && !usuario.isEmpty() && !usuario.equals(u.getUsuario())) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Usuario:").append(u.Usuario).append("->").append(usuario);
-                            u.Usuario = usuario;
+                            desc.append("Usuario:").append(u.getUsuario()).append("->").append(usuario);
+                            u.setUsuario(usuario);
                         }
-                        if (nombre != null && !nombre.isEmpty() && !nombre.equals(u.Nombre)) {
+                        if (nombre != null && !nombre.isEmpty() && !nombre.equals(u.getNombre())) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Nombre:").append(u.Nombre).append("->").append(nombre);
-                            u.Nombre = nombre;
+                            desc.append("Nombre:").append(u.getNombre()).append("->").append(nombre);
+                            u.setNombre(nombre);
                         }
-                        if (apellido != null && !apellido.isEmpty() && !apellido.equals(u.Apellido)) {
+                        if (apellido != null && !apellido.isEmpty() && !apellido.equals(u.getApellido())) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Apellido:").append(u.Apellido).append("->").append(apellido);
-                            u.Apellido = apellido;
+                            desc.append("Apellido:").append(u.getApellido()).append("->").append(apellido);
+                            u.setApellido(apellido);
                         }
                         if (claveHash != null) {
                             if (desc.length() > 0) desc.append("|");
                             desc.append("Clave: ***");
-                            u.Clave = claveHash;
+                            u.setClave(claveHash);
                         }
                         encontrado = true;
                         break;
@@ -1327,15 +1253,15 @@ public class AccesoDatos {
             jsonLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
-                List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<UsuarioJson>>() {});
+                List<Usuario> usuarios = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<Usuario>>() {});
                 boolean encontrado = false;
 
-                for (UsuarioJson u : usuarios) {
-                    if (u.UsuarioID == usuarioID) {
-                        String estadoAnterior = obtenerNombreEstadoPorId(u.EstadoUID);
-                        u.EstadoUID = 2;
-                        String estadoActual = obtenerNombreEstadoPorId(u.EstadoUID);
+                for (Usuario u : usuarios) {
+                    if (u.getUsuarioID() == usuarioID) {
+                        String estadoAnterior = obtenerNombreEstadoPorId(u.getEstadoUID());
+                        u.desactivar();
+                        String estadoActual = obtenerNombreEstadoPorId(u.getEstadoUID());
                         escribirUsuariosEnJsonSinLock(usuarios);
                         String desc = "Estado:" + estadoAnterior + "->" + estadoActual;
                         registrarLog(usuarioIDLogueado, 14, 4, usuarioID, desc);
@@ -1364,17 +1290,17 @@ public class AccesoDatos {
                 jsonLock.iniciarEscritura();
                 try {
                     Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
-                    List<UsuarioJson> usuarios = mapper.readValue(ruta.toFile(),
-                            new TypeReference<List<UsuarioJson>>() {});
+                    List<Usuario> usuarios = mapper.readValue(ruta.toFile(),
+                            new TypeReference<List<Usuario>>() {});
                     boolean encontrado = false;
-                    for (UsuarioJson u : usuarios) {
-                        if (u.Usuario != null && u.Usuario.equals(usuarioOID)) {
-                            String estadoAnterior = obtenerNombreEstadoPorId(u.EstadoUID);
-                            u.EstadoUID = 2;
-                            String estadoActual = obtenerNombreEstadoPorId(u.EstadoUID);
+                    for (Usuario u : usuarios) {
+                        if (u.getUsuario() != null && u.getUsuario().equals(usuarioOID)) {
+                            String estadoAnterior = obtenerNombreEstadoPorId(u.getEstadoUID());
+                            u.desactivar();
+                            String estadoActual = obtenerNombreEstadoPorId(u.getEstadoUID());
                             escribirUsuariosEnJsonSinLock(usuarios);
                             String desc = "Estado:" + estadoAnterior + "->" + estadoActual;
-                            registrarLog(usuarioIDLogueado, 14, 4, u.UsuarioID, desc);
+                            registrarLog(usuarioIDLogueado, 14, 4, u.getUsuarioID(), desc);
                             encontrado = true;
                             break;
                         }
@@ -1401,22 +1327,22 @@ public class AccesoDatos {
             misionLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
-                List<MisionJson> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
+                List<Mision> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<Mision>>() {});
 
                 int nuevoId = 1;
-                for (MisionJson m : misiones) {
-                    if (m.MisionID >= nuevoId) nuevoId = m.MisionID + 1;
+                for (Mision m : misiones) {
+                    if (m.getMisionID() >= nuevoId) nuevoId = m.getMisionID() + 1;
                 }
 
-                MisionJson nueva = new MisionJson();
-                nueva.MisionID = nuevoId;
-                nueva.EstadoMID = estadoMID;
-                nueva.Nombre = nombre;
-                nueva.Descripcion = descripcion;
-                nueva.FechaInicioEstimada = tsToString(ini);
-                nueva.FechaFinEstimada = tsToString(fin);
-                nueva.RetrasoInicio = null;
-                nueva.RetrasoFin = null;
+                Mision nueva = new Mision();
+                nueva.setMisionID(nuevoId);
+                nueva.setEstadoMID(estadoMID);
+                nueva.setNombre(nombre);
+                nueva.setDescripcion(descripcion);
+                nueva.setFechaInicioEstimada(tsToString(ini));
+                nueva.setFechaFinEstimada(tsToString(fin));
+                nueva.setRetrasoInicio(null);
+                nueva.setRetrasoFin(null);
 
                 misiones.add(nueva);
                 escribirMisionesEnJsonSinLock(misiones);
@@ -1437,31 +1363,31 @@ public class AccesoDatos {
             misionLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
-                List<MisionJson> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
+                List<Mision> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<Mision>>() {});
                 StringBuilder descChanges = new StringBuilder();
-                for (MisionJson m : misiones) {
-                    if (m.MisionID == id) {
-                        if (nombre != null && !nombre.equals(m.Nombre)) {
+                for (Mision m : misiones) {
+                    if (m.getMisionID() == id) {
+                        if (nombre != null && !nombre.equals(m.getNombre())) {
                             if (descChanges.length() > 0) descChanges.append("|");
-                            descChanges.append("Nombre:").append(m.Nombre).append("->").append(nombre);
-                            m.Nombre = nombre;
+                            descChanges.append("Nombre:").append(m.getNombre()).append("->").append(nombre);
+                            m.setNombre(nombre);
                         }
-                        if (desc != null && !desc.equals(m.Descripcion)) {
+                        if (desc != null && !desc.equals(m.getDescripcion())) {
                             if (descChanges.length() > 0) descChanges.append("|");
-                            descChanges.append("Descripcion:").append(m.Descripcion).append("->").append(desc);
-                            m.Descripcion = desc;
+                            descChanges.append("Descripcion:").append(m.getDescripcion()).append("->").append(desc);
+                            m.setDescripcion(desc);
                         }
                         String newIni = tsToString(ini);
-                        if (newIni != null && !newIni.equals(m.FechaInicioEstimada)) {
+                        if (newIni != null && !newIni.equals(m.getFechaInicioEstimada())) {
                             if (descChanges.length() > 0) descChanges.append("|");
-                            descChanges.append("FechaInicio:").append(m.FechaInicioEstimada).append("->").append(newIni);
-                            m.FechaInicioEstimada = newIni;
+                            descChanges.append("FechaInicio:").append(m.getFechaInicioEstimada()).append("->").append(newIni);
+                            m.setFechaInicioEstimada(newIni);
                         }
                         String newFin = tsToString(fin);
-                        if (newFin != null && !newFin.equals(m.FechaFinEstimada)) {
+                        if (newFin != null && !newFin.equals(m.getFechaFinEstimada())) {
                             if (descChanges.length() > 0) descChanges.append("|");
-                            descChanges.append("FechaFin:").append(m.FechaFinEstimada).append("->").append(newFin);
-                            m.FechaFinEstimada = newFin;
+                            descChanges.append("FechaFin:").append(m.getFechaFinEstimada()).append("->").append(newFin);
+                            m.setFechaFinEstimada(newFin);
                         }
                         break;
                     }
@@ -1484,14 +1410,14 @@ public class AccesoDatos {
             misionLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
-                List<MisionJson> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<MisionJson>>() {});
+                List<Mision> misiones = mapper.readValue(ruta.toFile(), new TypeReference<List<Mision>>() {});
                 int accionID = 0;
-                for (MisionJson m : misiones) {
-                    if (m.MisionID == id) {
-                        String estadoAnterior = obtenerNombreEstadoMisionPorId(m.EstadoMID);
-                        m.EstadoMID = estadoID;
-                        if (retrasoInicio != null) m.RetrasoInicio = retrasoInicio;
-                        if (retrasoFin != null) m.RetrasoFin = retrasoFin;
+                for (Mision m : misiones) {
+                    if (m.getMisionID() == id) {
+                        String estadoAnterior = obtenerNombreEstadoMisionPorId(m.getEstadoMID());
+                        m.setEstadoMID(estadoID);
+                        if (retrasoInicio != null) m.setRetrasoInicio(retrasoInicio);
+                        if (retrasoFin != null) m.setRetrasoFin(retrasoFin);
                         String estadoNuevo = obtenerNombreEstadoMisionPorId(estadoID);
                         if (estadoID == 5) accionID = 3;
                         else if (estadoID == 4) accionID = 4;
@@ -1514,36 +1440,36 @@ public class AccesoDatos {
     }
 
     public ResultSet listarMisiones() throws SQLException {
-        List<MisionJson> misiones = leerMisionesDesdeJson();
+        List<Mision> misiones = leerMisionesDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (MisionJson m : misiones) {
+        for (Mision m : misiones) {
             filas.add(new String[]{
-                String.valueOf(m.MisionID),
-                m.Nombre != null ? m.Nombre : "",
-                m.FechaInicioEstimada != null ? m.FechaInicioEstimada : "",
-                m.FechaFinEstimada != null ? m.FechaFinEstimada : "",
-                m.RetrasoInicio != null ? String.valueOf(m.RetrasoInicio) : "",
-                m.RetrasoFin != null ? String.valueOf(m.RetrasoFin) : "",
-                obtenerNombreEstadoMisionPorId(m.EstadoMID)
+                String.valueOf(m.getMisionID()),
+                m.getNombre() != null ? m.getNombre() : "",
+                m.getFechaInicioEstimada() != null ? m.getFechaInicioEstimada() : "",
+                m.getFechaFinEstimada() != null ? m.getFechaFinEstimada() : "",
+                m.getRetrasoInicio() != null ? String.valueOf(m.getRetrasoInicio()) : "",
+                m.getRetrasoFin() != null ? String.valueOf(m.getRetrasoFin()) : "",
+                obtenerNombreEstadoMisionPorId(m.getEstadoMID())
             });
         }
         return new SimpleResultSet(filas, 7);
     }
 
     public ResultSet consultarMision(int id) throws SQLException {
-        List<MisionJson> misiones = leerMisionesDesdeJson();
-        for (MisionJson m : misiones) {
-            if (m.MisionID == id) {
+        List<Mision> misiones = leerMisionesDesdeJson();
+        for (Mision m : misiones) {
+            if (m.getMisionID() == id) {
                 List<String[]> filas = new ArrayList<>();
                 filas.add(new String[]{
-                    String.valueOf(m.MisionID),
-                    m.Nombre != null ? m.Nombre : "",
-                    m.Descripcion != null ? m.Descripcion : "",
-                    obtenerNombreEstadoMisionPorId(m.EstadoMID),
-                    m.FechaInicioEstimada != null ? m.FechaInicioEstimada : "",
-                    m.FechaFinEstimada != null ? m.FechaFinEstimada : "",
-                    m.RetrasoInicio != null ? String.valueOf(m.RetrasoInicio) : "",
-                    m.RetrasoFin != null ? String.valueOf(m.RetrasoFin) : ""
+                    String.valueOf(m.getMisionID()),
+                    m.getNombre() != null ? m.getNombre() : "",
+                    m.getDescripcion() != null ? m.getDescripcion() : "",
+                    obtenerNombreEstadoMisionPorId(m.getEstadoMID()),
+                    m.getFechaInicioEstimada() != null ? m.getFechaInicioEstimada() : "",
+                    m.getFechaFinEstimada() != null ? m.getFechaFinEstimada() : "",
+                    m.getRetrasoInicio() != null ? String.valueOf(m.getRetrasoInicio()) : "",
+                    m.getRetrasoFin() != null ? String.valueOf(m.getRetrasoFin()) : ""
                 });
                 return new SimpleResultSet(filas, 8);
             }
@@ -1552,9 +1478,9 @@ public class AccesoDatos {
     }
 
     public boolean existeMision(int id) throws SQLException {
-        List<MisionJson> misiones = leerMisionesDesdeJson();
-        for (MisionJson m : misiones) {
-            if (m.MisionID == id) return true;
+        List<Mision> misiones = leerMisionesDesdeJson();
+        for (Mision m : misiones) {
+            if (m.getMisionID() == id) return true;
         }
         return false;
     }
@@ -1565,24 +1491,24 @@ public class AccesoDatos {
             tripulanteLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
-                List<TripulanteJson> tripulantes = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<TripulanteJson>>() {});
+                List<Tripulante> tripulantes = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<Tripulante>>() {});
 
                 int nuevoId = 1;
-                for (TripulanteJson t : tripulantes) {
-                    if (t.TripulanteID >= nuevoId) nuevoId = t.TripulanteID + 1;
+                for (Tripulante t : tripulantes) {
+                    if (t.getTripulanteID() >= nuevoId) nuevoId = t.getTripulanteID() + 1;
                 }
 
-                TripulanteJson nuevo = new TripulanteJson();
-                nuevo.TripulanteID = nuevoId;
-                nuevo.EstadoTID = estadoTID;
-                nuevo.SexoID = sexoID;
-                nuevo.Peso = peso;
-                nuevo.Altura = altura;
-                nuevo.Nombre = nombre;
-                nuevo.Apellido = apellido;
-                nuevo.Imagen = imagen;
-                nuevo.FechaDeNacimiento = fechaNacimiento.toString();
+                Tripulante nuevo = new Tripulante();
+                nuevo.setTripulanteID(nuevoId);
+                nuevo.setEstadoTID(estadoTID);
+                nuevo.setSexoID(sexoID);
+                nuevo.setPeso(peso);
+                nuevo.setAltura(altura);
+                nuevo.setNombre(nombre);
+                nuevo.setApellido(apellido);
+                nuevo.setImagen(imagen);
+                nuevo.setFechaDeNacimiento(fechaNacimiento.toString());
 
                 tripulantes.add(nuevo);
                 escribirTripulantesEnJsonSinLock(tripulantes);
@@ -1610,52 +1536,52 @@ public class AccesoDatos {
             tripulanteLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
-                List<TripulanteJson> tripulantes = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<TripulanteJson>>() {});
+                List<Tripulante> tripulantes = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<Tripulante>>() {});
                 StringBuilder desc = new StringBuilder();
 
-                for (TripulanteJson t : tripulantes) {
-                    if (t.TripulanteID == tripulanteID) {
-                        if (t.EstadoTID != estadoTID) {
+                for (Tripulante t : tripulantes) {
+                    if (t.getTripulanteID() == tripulanteID) {
+                        if (t.getEstadoTID() != estadoTID) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Estado:").append(obtenerNombreEstadoTripulantePorId(t.EstadoTID)).append("->").append(obtenerNombreEstadoTripulantePorId(estadoTID));
-                            t.EstadoTID = estadoTID;
+                            desc.append("Estado:").append(obtenerNombreEstadoTripulantePorId(t.getEstadoTID())).append("->").append(obtenerNombreEstadoTripulantePorId(estadoTID));
+                            t.setEstadoTID(estadoTID);
                         }
-                        if (t.SexoID != sexoID) {
+                        if (t.getSexoID() != sexoID) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Sexo:").append(obtenerNombreSexoPorId(t.SexoID)).append("->").append(obtenerNombreSexoPorId(sexoID));
-                            t.SexoID = sexoID;
+                            desc.append("Sexo:").append(obtenerNombreSexoPorId(t.getSexoID())).append("->").append(obtenerNombreSexoPorId(sexoID));
+                            t.setSexoID(sexoID);
                         }
-                        if (t.Peso != peso) {
+                        if (t.getPeso() != peso) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Peso:").append(t.Peso).append("->").append(peso);
-                            t.Peso = peso;
+                            desc.append("Peso:").append(t.getPeso()).append("->").append(peso);
+                            t.setPeso(peso);
                         }
-                        if (t.Altura != altura) {
+                        if (t.getAltura() != altura) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Altura:").append(t.Altura).append("->").append(altura);
-                            t.Altura = altura;
+                            desc.append("Altura:").append(t.getAltura()).append("->").append(altura);
+                            t.setAltura(altura);
                         }
-                        if (nombre != null && !nombre.equals(t.Nombre)) {
+                        if (nombre != null && !nombre.equals(t.getNombre())) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Nombre:").append(t.Nombre).append("->").append(nombre);
-                            t.Nombre = nombre;
+                            desc.append("Nombre:").append(t.getNombre()).append("->").append(nombre);
+                            t.setNombre(nombre);
                         }
-                        if (apellido != null && !apellido.equals(t.Apellido)) {
+                        if (apellido != null && !apellido.equals(t.getApellido())) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Apellido:").append(t.Apellido).append("->").append(apellido);
-                            t.Apellido = apellido;
+                            desc.append("Apellido:").append(t.getApellido()).append("->").append(apellido);
+                            t.setApellido(apellido);
                         }
-                        if (imagen != null && !imagen.equals(t.Imagen)) {
+                        if (imagen != null && !imagen.equals(t.getImagen())) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("Imagen:").append(t.Imagen).append("->").append(imagen);
-                            t.Imagen = imagen;
+                            desc.append("Imagen:").append(t.getImagen()).append("->").append(imagen);
+                            t.setImagen(imagen);
                         }
                         String newFecha = fechaNacimiento.toString();
-                        if (!newFecha.equals(t.FechaDeNacimiento)) {
+                        if (!newFecha.equals(t.getFechaDeNacimiento())) {
                             if (desc.length() > 0) desc.append("|");
-                            desc.append("FechaNacimiento:").append(t.FechaDeNacimiento).append("->").append(newFecha);
-                            t.FechaDeNacimiento = newFecha;
+                            desc.append("FechaNacimiento:").append(t.getFechaDeNacimiento()).append("->").append(newFecha);
+                            t.setFechaDeNacimiento(newFecha);
                         }
                         break;
                     }
@@ -1680,14 +1606,14 @@ public class AccesoDatos {
             tripulanteLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
-                List<TripulanteJson> tripulantes = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<TripulanteJson>>() {});
+                List<Tripulante> tripulantes = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<Tripulante>>() {});
 
-                for (TripulanteJson t : tripulantes) {
-                    if (t.TripulanteID == tripulanteID) {
-                        String estadoAnterior = obtenerNombreEstadoTripulantePorId(t.EstadoTID);
-                        t.EstadoTID = 3;
-                        String estadoActual = obtenerNombreEstadoTripulantePorId(t.EstadoTID);
+                for (Tripulante t : tripulantes) {
+                    if (t.getTripulanteID() == tripulanteID) {
+                        String estadoAnterior = obtenerNombreEstadoTripulantePorId(t.getEstadoTID());
+                        t.retirar();
+                        String estadoActual = obtenerNombreEstadoTripulantePorId(t.getEstadoTID());
                         escribirTripulantesEnJsonSinLock(tripulantes);
                         String desc = "Estado:" + estadoAnterior + "->" + estadoActual;
                         registrarLog(usuarioIDLogueado, 10, 2, tripulanteID, desc);
@@ -1712,8 +1638,8 @@ public class AccesoDatos {
             misionLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "GrupoMisiones.json");
-                List<GrupoMisionJson> grupos = mapper.readValue(ruta.toFile(), new TypeReference<List<GrupoMisionJson>>() {});
-                GrupoMisionJson nuevo = new GrupoMisionJson();
+                List<GrupoMision> grupos = mapper.readValue(ruta.toFile(), new TypeReference<List<GrupoMision>>() {});
+                GrupoMision nuevo = new GrupoMision();
                 nuevo.TripulanteID = tripID;
                 nuevo.MisionID = misID;
                 nuevo.FechaAsignacion = tsToString(fecha);
@@ -1732,36 +1658,36 @@ public class AccesoDatos {
     }
 
     public ResultSet listarTripulantes() {
-        List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
+        List<Tripulante> tripulantes = leerTripulantesDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (TripulanteJson t : tripulantes) {
+        for (Tripulante t : tripulantes) {
             filas.add(new String[]{
-                String.valueOf(t.TripulanteID),
-                t.Nombre != null ? t.Nombre : "",
-                t.Apellido != null ? t.Apellido : "",
-                t.Imagen != null ? t.Imagen : "",
-                obtenerNombreEstadoTripulantePorId(t.EstadoTID),
-                obtenerNombreSexoPorId(t.SexoID),
-                String.valueOf(t.Peso),
-                String.valueOf(t.Altura)
+                String.valueOf(t.getTripulanteID()),
+                t.getNombre() != null ? t.getNombre() : "",
+                t.getApellido() != null ? t.getApellido() : "",
+                t.getImagen() != null ? t.getImagen() : "",
+                obtenerNombreEstadoTripulantePorId(t.getEstadoTID()),
+                obtenerNombreSexoPorId(t.getSexoID()),
+                String.valueOf(t.getPeso()),
+                String.valueOf(t.getAltura())
             });
         }
         return new SimpleResultSet(filas, 8);
     }
 
     public ResultSet listarTripulantesMision(int misionID) throws SQLException {
-        List<GrupoMisionJson> grupos = leerGrupoMisionesDesdeJson();
-        List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
+        List<GrupoMision> grupos = leerGrupoMisionesDesdeJson();
+        List<Tripulante> tripulantes = leerTripulantesDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (GrupoMisionJson g : grupos) {
+        for (GrupoMision g : grupos) {
             if (g.MisionID == misionID) {
-                for (TripulanteJson t : tripulantes) {
-                    if (t.TripulanteID == g.TripulanteID) {
+                for (Tripulante t : tripulantes) {
+                    if (t.getTripulanteID() == g.TripulanteID) {
                         filas.add(new String[]{
-                            String.valueOf(t.TripulanteID),
-                            t.Nombre != null ? t.Nombre : "",
-                            t.Apellido != null ? t.Apellido : "",
-                            obtenerNombreEstadoTripulantePorId(t.EstadoTID),
+                            String.valueOf(t.getTripulanteID()),
+                            t.getNombre() != null ? t.getNombre() : "",
+                            t.getApellido() != null ? t.getApellido() : "",
+                            obtenerNombreEstadoTripulantePorId(t.getEstadoTID()),
                             g.FechaAsignacion != null ? g.FechaAsignacion : ""
                         });
                         break;
@@ -1773,19 +1699,19 @@ public class AccesoDatos {
     }
 
     public ResultSet listarMisionesTripulante(int tripulanteID) throws SQLException {
-        List<GrupoMisionJson> grupos = leerGrupoMisionesDesdeJson();
-        List<MisionJson> misiones = leerMisionesDesdeJson();
+        List<GrupoMision> grupos = leerGrupoMisionesDesdeJson();
+        List<Mision> misiones = leerMisionesDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (GrupoMisionJson g : grupos) {
+        for (GrupoMision g : grupos) {
             if (g.TripulanteID == tripulanteID) {
-                for (MisionJson m : misiones) {
-                    if (m.MisionID == g.MisionID) {
+                for (Mision m : misiones) {
+                    if (m.getMisionID() == g.MisionID) {
                         filas.add(new String[]{
-                            String.valueOf(m.MisionID),
-                            m.Nombre != null ? m.Nombre : "",
-                            obtenerNombreEstadoMisionPorId(m.EstadoMID),
-                            m.FechaInicioEstimada != null ? m.FechaInicioEstimada : "",
-                            m.FechaFinEstimada != null ? m.FechaFinEstimada : ""
+                            String.valueOf(m.getMisionID()),
+                            m.getNombre() != null ? m.getNombre() : "",
+                            obtenerNombreEstadoMisionPorId(m.getEstadoMID()),
+                            m.getFechaInicioEstimada() != null ? m.getFechaInicioEstimada() : "",
+                            m.getFechaFinEstimada() != null ? m.getFechaFinEstimada() : ""
                         });
                         break;
                     }
@@ -1796,20 +1722,20 @@ public class AccesoDatos {
     }
 
     public ResultSet consultarTripulante(int tripulanteID) {
-        List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
-        for (TripulanteJson t : tripulantes) {
-            if (t.TripulanteID == tripulanteID) {
+        List<Tripulante> tripulantes = leerTripulantesDesdeJson();
+        for (Tripulante t : tripulantes) {
+            if (t.getTripulanteID() == tripulanteID) {
                 List<String[]> filas = new ArrayList<>();
                 filas.add(new String[]{
-                    String.valueOf(t.TripulanteID),
-                    t.Nombre != null ? t.Nombre : "",
-                    t.Apellido != null ? t.Apellido : "",
-                    String.valueOf(t.Peso),
-                    String.valueOf(t.Altura),
-                    t.Imagen != null ? t.Imagen : "",
-                    t.FechaDeNacimiento != null ? t.FechaDeNacimiento : "",
-                    obtenerNombreEstadoTripulantePorId(t.EstadoTID),
-                    obtenerNombreSexoPorId(t.SexoID)
+                    String.valueOf(t.getTripulanteID()),
+                    t.getNombre() != null ? t.getNombre() : "",
+                    t.getApellido() != null ? t.getApellido() : "",
+                    String.valueOf(t.getPeso()),
+                    String.valueOf(t.getAltura()),
+                    t.getImagen() != null ? t.getImagen() : "",
+                    t.getFechaDeNacimiento() != null ? t.getFechaDeNacimiento() : "",
+                    obtenerNombreEstadoTripulantePorId(t.getEstadoTID()),
+                    obtenerNombreSexoPorId(t.getSexoID())
                 });
                 return new SimpleResultSet(filas, 9);
             }
@@ -1818,47 +1744,47 @@ public class AccesoDatos {
     }
 
     public boolean existeTripulante(int id) {
-        List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
-        for (TripulanteJson t : tripulantes) {
-            if (t.TripulanteID == id) return true;
+        List<Tripulante> tripulantes = leerTripulantesDesdeJson();
+        for (Tripulante t : tripulantes) {
+            if (t.getTripulanteID() == id) return true;
         }
         return false;
     }
 
     public boolean isTripulanteRetirado(int id) {
-        List<TripulanteJson> tripulantes = leerTripulantesDesdeJson();
-        for (TripulanteJson t : tripulantes) {
-            if (t.TripulanteID == id) return t.EstadoTID == 3;
+        List<Tripulante> tripulantes = leerTripulantesDesdeJson();
+        for (Tripulante t : tripulantes) {
+            if (t.getTripulanteID() == id) return t.estaRetirado();
         }
         return false;
     }
 
     public boolean isMisionTerminada(int id) {
-        List<MisionJson> misiones = leerMisionesDesdeJson();
-        for (MisionJson m : misiones) {
-            if (m.MisionID == id) return m.EstadoMID == 4 || m.EstadoMID == 5;
+        List<Mision> misiones = leerMisionesDesdeJson();
+        for (Mision m : misiones) {
+            if (m.getMisionID() == id) return m.estaTerminada();
         }
         return false;
     }
 
     public boolean isUsuarioInactivo(int id) {
-        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
-        for (UsuarioJson u : usuarios) {
-            if (u.UsuarioID == id) return u.EstadoUID == 2;
+        List<Usuario> usuarios = leerUsuariosDesdeJson();
+        for (Usuario u : usuarios) {
+            if (u.getUsuarioID() == id) return u.estaInactivo();
         }
         return false;
     }
 
     public ResultSet consultarCapacidades(int tripulanteID) {
-        List<CapacidadJson> capacidades = leerCapacidadesDesdeJson();
+        List<Capacidad> capacidades = leerCapacidadesDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (CapacidadJson c : capacidades) {
-            if (c.TripulanteID == tripulanteID) {
+        for (Capacidad c : capacidades) {
+            if (c.getTripulanteID() == tripulanteID) {
                 filas.add(new String[]{
-                    String.valueOf(c.AptitudID),
-                    obtenerNombreAptitudPorId(c.AptitudID),
-                    String.valueOf(c.Calificacion),
-                    c.FechaCapacidades != null ? c.FechaCapacidades : ""
+                    String.valueOf(c.getAptitudID()),
+                    obtenerNombreAptitudPorId(c.getAptitudID()),
+                    String.valueOf(c.getCalificacion()),
+                    c.getFechaCapacidades() != null ? c.getFechaCapacidades() : ""
                 });
             }
         }
@@ -1870,15 +1796,15 @@ public class AccesoDatos {
             tripulanteLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
-                List<CapacidadJson> capacidades = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<CapacidadJson>>() {});
+                List<Capacidad> capacidades = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<Capacidad>>() {});
 
                 boolean existe = false;
-                for (CapacidadJson c : capacidades) {
-                    if (c.TripulanteID == tripulanteID && c.AptitudID == aptitudID) {
-                        String descFecha = "Calificacion:" + c.Calificacion + "->" + calificacion;
-                        c.Calificacion = calificacion;
-                        c.FechaCapacidades = fecha;
+                for (Capacidad c : capacidades) {
+                    if (c.getTripulanteID() == tripulanteID && c.getAptitudID() == aptitudID) {
+                        String descFecha = "Calificacion:" + c.getCalificacion() + "->" + calificacion;
+                        c.setCalificacion(calificacion);
+                        c.setFechaCapacidades(fecha);
                         escribirCapacidadesEnJsonSinLock(capacidades);
                         registrarLog(usuarioIDLogueado, 12, 5, tripulanteID, descFecha);
                         existe = true;
@@ -1887,11 +1813,11 @@ public class AccesoDatos {
                 }
 
                 if (!existe) {
-                    CapacidadJson nueva = new CapacidadJson();
-                    nueva.TripulanteID = tripulanteID;
-                    nueva.AptitudID = aptitudID;
-                    nueva.Calificacion = calificacion;
-                    nueva.FechaCapacidades = fecha;
+                    Capacidad nueva = new Capacidad();
+                    nueva.setTripulanteID(tripulanteID);
+                    nueva.setAptitudID(aptitudID);
+                    nueva.setCalificacion(calificacion);
+                    nueva.setFechaCapacidades(fecha);
 
                     capacidades.add(nueva);
                     escribirCapacidadesEnJsonSinLock(capacidades);
@@ -1914,9 +1840,9 @@ public class AccesoDatos {
             tripulanteLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
-                List<CapacidadJson> capacidades = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<CapacidadJson>>() {});
-                capacidades.removeIf(c -> c.TripulanteID == tripulanteID);
+                List<Capacidad> capacidades = mapper.readValue(ruta.toFile(),
+                        new TypeReference<List<Capacidad>>() {});
+                capacidades.removeIf(c -> c.getTripulanteID() == tripulanteID);
                 escribirCapacidadesEnJsonSinLock(capacidades);
             } finally {
                 tripulanteLock.terminarEscritura();
@@ -1934,20 +1860,20 @@ public class AccesoDatos {
             eventoLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
-                List<EventoJson> eventos = mapper.readValue(ruta.toFile(), new TypeReference<List<EventoJson>>() {});
+                List<Evento> eventos = mapper.readValue(ruta.toFile(), new TypeReference<List<Evento>>() {});
 
                 int nuevoId = 1;
-                for (EventoJson e : eventos) {
-                    if (e.EventoID >= nuevoId) nuevoId = e.EventoID + 1;
+                for (Evento e : eventos) {
+                    if (e.getEventoID() >= nuevoId) nuevoId = e.getEventoID() + 1;
                 }
 
-                EventoJson nuevo = new EventoJson();
-                nuevo.EventoID = nuevoId;
-                nuevo.MisionID = misionID;
-                nuevo.Titulo = titulo;
-                nuevo.Fecha = tsToString(fecha);
-                nuevo.Descripcion = desc;
-                nuevo.EstadoEID = 1;
+                Evento nuevo = new Evento();
+                nuevo.setEventoID(nuevoId);
+                nuevo.setMisionID(misionID);
+                nuevo.setTitulo(titulo);
+                nuevo.setFecha(tsToString(fecha));
+                nuevo.setDescripcion(desc);
+                nuevo.setEstadoEID(1);
 
                 eventos.add(nuevo);
                 escribirEventosEnJsonSinLock(eventos);
@@ -1970,12 +1896,12 @@ public class AccesoDatos {
             eventoLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
-                List<EventoJson> eventos = mapper.readValue(ruta.toFile(), new TypeReference<List<EventoJson>>() {});
-                for (EventoJson e : eventos) {
-                    if (e.EventoID == eventoID) {
-                        String estadoAnterior = obtenerNombreEstadoEventoPorId(e.EstadoEID);
-                        e.EstadoEID = 2;
-                        String estadoActual = obtenerNombreEstadoEventoPorId(e.EstadoEID);
+                List<Evento> eventos = mapper.readValue(ruta.toFile(), new TypeReference<List<Evento>>() {});
+                for (Evento e : eventos) {
+                    if (e.getEventoID() == eventoID) {
+                        String estadoAnterior = obtenerNombreEstadoEventoPorId(e.getEstadoEID());
+                        e.desestimar();
+                        String estadoActual = obtenerNombreEstadoEventoPorId(e.getEstadoEID());
                         escribirEventosEnJsonSinLock(eventos);
                         String desc = "Estado:" + estadoAnterior + "->" + estadoActual;
                         registrarLog(usuarioIDLogueado, 7, 3, eventoID, desc);
@@ -1994,32 +1920,32 @@ public class AccesoDatos {
     }
 
     public ResultSet listarEventos() throws SQLException {
-        List<EventoJson> eventos = leerEventosDesdeJson();
+        List<Evento> eventos = leerEventosDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (EventoJson e : eventos) {
+        for (Evento e : eventos) {
             filas.add(new String[]{
-                String.valueOf(e.EventoID),
-                obtenerNombreMisionPorId(e.MisionID),
-                e.Titulo != null ? e.Titulo : "",
-                e.Fecha != null ? e.Fecha : "",
-                e.Descripcion != null ? e.Descripcion : "",
-                obtenerNombreEstadoEventoPorId(e.EstadoEID)
+                String.valueOf(e.getEventoID()),
+                obtenerNombreMisionPorId(e.getMisionID()),
+                e.getTitulo() != null ? e.getTitulo() : "",
+                e.getFecha() != null ? e.getFecha() : "",
+                e.getDescripcion() != null ? e.getDescripcion() : "",
+                obtenerNombreEstadoEventoPorId(e.getEstadoEID())
             });
         }
         return new SimpleResultSet(filas, 6);
     }
 
     public ResultSet consultarEventos(int misionID) throws SQLException {
-        List<EventoJson> eventos = leerEventosDesdeJson();
+        List<Evento> eventos = leerEventosDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (EventoJson e : eventos) {
-            if (e.MisionID == misionID) {
+        for (Evento e : eventos) {
+            if (e.getMisionID() == misionID) {
                 filas.add(new String[]{
-                    String.valueOf(e.EventoID),
-                    e.Titulo != null ? e.Titulo : "",
-                    e.Fecha != null ? e.Fecha : "",
-                    e.Descripcion != null ? e.Descripcion : "",
-                    obtenerNombreEstadoEventoPorId(e.EstadoEID)
+                    String.valueOf(e.getEventoID()),
+                    e.getTitulo() != null ? e.getTitulo() : "",
+                    e.getFecha() != null ? e.getFecha() : "",
+                    e.getDescripcion() != null ? e.getDescripcion() : "",
+                    obtenerNombreEstadoEventoPorId(e.getEstadoEID())
                 });
             }
         }
@@ -2046,8 +1972,8 @@ public class AccesoDatos {
 
     public Map<String, Integer> obtenerEstadosMisionComoMapa() {
         Map<String, Integer> mapa = new HashMap<>();
-        List<EstadoMisionJson> estados = leerEstadosMisionDesdeJson();
-        for (EstadoMisionJson e : estados) {
+        List<EstadoMision> estados = leerEstadosMisionDesdeJson();
+        for (EstadoMision e : estados) {
             mapa.put(e.Estado.toUpperCase(), e.EstadoMID);
         }
         return mapa;
@@ -2055,8 +1981,8 @@ public class AccesoDatos {
 
     public Map<String, Integer> obtenerEstadosTripulanteComoMapa() {
         Map<String, Integer> mapa = new HashMap<>();
-        List<EstadoTripulanteJson> estados = leerEstadosTripulantesDesdeJson();
-        for (EstadoTripulanteJson e : estados) {
+        List<EstadoTripulante> estados = leerEstadosTripulantesDesdeJson();
+        for (EstadoTripulante e : estados) {
             mapa.put(e.Estado.toUpperCase(), e.EstadoTID);
         }
         return mapa;
@@ -2064,26 +1990,26 @@ public class AccesoDatos {
 
     public Map<String, Integer> obtenerEstadosEventoComoMapa() {
         Map<String, Integer> mapa = new HashMap<>();
-        List<EstadoEventoJson> estados = leerEstadosEventoDesdeJson();
-        for (EstadoEventoJson e : estados) {
+        List<EstadoEvento> estados = leerEstadosEventoDesdeJson();
+        for (EstadoEvento e : estados) {
             mapa.put(e.Estado.toUpperCase(), e.EstadoEID);
         }
         return mapa;
     }
 
     public ResultSet verLogs() {
-        List<RegistroJson> registros = leerRegistrosDesdeJson();
-        List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
+        List<Registro> registros = leerRegistrosDesdeJson();
+        List<Usuario> usuarios = leerUsuariosDesdeJson();
         List<RolJson> roles = leerRolesDesdeJson();
         List<String[]> filas = new ArrayList<>();
-        for (RegistroJson r : registros) {
+        for (Registro r : registros) {
             String nombreUsuario = "";
             String nombreRol = "";
-            for (UsuarioJson u : usuarios) {
-                if (u.UsuarioID == r.UsuarioID) {
-                    nombreUsuario = u.Usuario != null ? u.Usuario : "";
+            for (Usuario u : usuarios) {
+                if (u.getUsuarioID() == r.getUsuarioID()) {
+                    nombreUsuario = u.getUsuario() != null ? u.getUsuario() : "";
                     for (RolJson rol : roles) {
-                        if (rol.RolID == u.RolID) {
+                        if (rol.RolID == u.getRolID()) {
                             nombreRol = rol.Rol;
                             break;
                         }
@@ -2091,17 +2017,17 @@ public class AccesoDatos {
                     break;
                 }
             }
-            String nombreAccion = obtenerNombreAccionPorId(r.AccionMID);
-            String nombreEntidad = obtenerNombreEntidadPorId(r.TipoEntidadID);
+            String nombreAccion = obtenerNombreAccionPorId(r.getAccionMID());
+            String nombreEntidad = obtenerNombreEntidadPorId(r.getTipoEntidadID());
             filas.add(new String[]{
-                String.valueOf(r.RegistroID),
+                String.valueOf(r.getRegistroID()),
                 nombreUsuario,
                 nombreRol,
                 nombreAccion != null ? nombreAccion : "",
                 nombreEntidad != null ? nombreEntidad : "",
-                String.valueOf(r.EntidadID),
-                r.FechaHora != null ? r.FechaHora : "",
-                r.Descripcion != null ? r.Descripcion : ""
+                String.valueOf(r.getEntidadID()),
+                r.getFechaHora() != null ? r.getFechaHora() : "",
+                r.getDescripcion() != null ? r.getDescripcion() : ""
             });
         }
         filas.sort((a, b) -> b[6].compareTo(a[6]));
