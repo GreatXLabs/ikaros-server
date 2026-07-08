@@ -47,13 +47,29 @@ public class AccesoDatos {
 
     private static void asegurarArchivo(String nombre) throws IOException {
         Path destino = Path.of(Configuracion.getDataDir(), nombre);
-        if (Files.exists(destino)) return;
+        if (Files.exists(destino)) {
+            if (!"Usuarios.json".equals(nombre) || !tienePasswordsEnTextoPlano(destino)) return;
+            System.out.println("Seed desactualizado detectado, sobrescribiendo: " + destino);
+        }
         Files.createDirectories(destino.getParent());
         try (InputStream is = AccesoDatos.class.getClassLoader().getResourceAsStream(nombre)) {
             if (is == null) throw new IOException("Recurso semilla no encontrado: " + nombre);
-            Files.copy(is, destino);
+            Files.copy(is, destino, StandardCopyOption.REPLACE_EXISTING);
         }
         System.out.println("Archivo sembrado: " + destino);
+    }
+
+    private static boolean tienePasswordsEnTextoPlano(Path ruta) {
+        try {
+            List<Map<String, Object>> usuarios = mapper.readValue(ruta.toFile(), new TypeReference<List<Map<String, Object>>>() {});
+            for (Map<String, Object> u : usuarios) {
+                Object clave = u.get("Clave");
+                if (clave instanceof String s && (s.length() < 50 || !s.startsWith("$2"))) return true;
+            }
+        } catch (Exception e) {
+            return true;
+        }
+        return false;
     }
 
     static {

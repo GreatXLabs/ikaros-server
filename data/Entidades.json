@@ -1,0 +1,22 @@
+[
+  {
+    "TipoEntidadID": 1,
+    "TipoEntidad": "Mision"
+  },
+  {
+    "TipoEntidadID": 2,
+    "TipoEntidad": "Tripulante"
+  },
+  {
+    "TipoEntidadID": 3,
+    "TipoEntidad": "Evento"
+  },
+  {
+    "TipoEntidadID": 4,
+    "TipoEntidad": "Usuario"
+  },
+  {
+    "TipoEntidadID": 5,
+    "TipoEntidad": "Capacidad"
+  }
+]
