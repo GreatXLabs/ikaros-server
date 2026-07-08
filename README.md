@@ -12,6 +12,9 @@ Ikaros es un programa de administracion y gestion de misiones espaciales, surge 
 
 Las cosas que se utilizaron para que el programa sea posible (mariadb, java, etc).
 
+-Java 25
+-Docker
+
 ## Requisitos
 
 Que cosas necesita tener en su dispositivo un usuario para usar el programa (version x o superior de java, mariadb, etc).
@@ -38,12 +41,12 @@ https://github.com/GreatXLabs/ikaros-client.git
 
 No hay mucha ciencia es quienes hicieron el programa (nosotros)
 
-https://github.com/LucaGMB/  →  (rol en el equipo)
+https://github.com/LucaGMB/  →  Team Leader/Backend Developer
 
-https://github.com/GaelSchenone  →  Diseñador UX/UI
+https://github.com/GaelSchenone  → UX/UI Designer 
 
-https://github.com/juannara  →  Documentador e identificador de errores
+https://github.com/juannara  →  QA Tester/Technical Writer
 
-https://github.com/ECubeCode  →  DBA 
+https://github.com/ECubeCode  →  DBA/Backend Developer
 
 
