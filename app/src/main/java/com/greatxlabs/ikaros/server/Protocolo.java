@@ -43,15 +43,16 @@ public class Protocolo {
 
 		String token = partes[1];
 
-		if (!gestorSesiones.esSesionValida(token)) {
-			return "ERROR|E00|Sesión inválida o vencida";
-		}
-
-		if (!gestorSesiones.tienePermiso(token, operacion)) {
-			return "ERROR|E01|Permiso insuficiente para esta operación";
-		}
-
 		try {
+			if (!gestorSesiones.esSesionValida(token)) {
+				return "ERROR|E00|Sesión inválida o vencida";
+			}
+
+			if (!gestorSesiones.tienePermiso(token, operacion)) {
+				return "ERROR|E01|Permiso insuficiente para esta operación";
+			}
+
+			
 			switch (operacion) {
 			case "CONSULTAR_ROLES":
 				return formatearLista(accesoDatos.consultarRoles(), 2);

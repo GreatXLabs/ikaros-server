@@ -1,7 +1,5 @@
 package com.greatxlabs.ikaros.server;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,60 +19,32 @@ public class CacheMaestra {
 
 	public void cargarTodo() {
 		System.out.println("Cargando tablas maestras en cache...");
-		try {
-			cargarRoles();
-			cargarEstadosMision();
-			cargarEstadosTripulante();
-			cargarEstadosEvento();
-			cargarAptitudes();
-			System.out.println("Carga de cache finalizada con exito.");
-		} catch (SQLException e) {
-			System.err.println("Error cargando cache inicial: " + e.getMessage());
-		}
+		cargarRoles();
+		cargarEstadosMision();
+		cargarEstadosTripulante();
+		cargarEstadosEvento();
+		cargarAptitudes();
+		System.out.println("Carga de cache finalizada con exito.");
 	}
 
-	private void cargarRoles() throws SQLException {
-		try (ResultSet rs = accesoDatos.consultarRoles()) {
-			cargarDesdeResultSet(rs, roles);
-		}
+	private void cargarRoles() {
+		roles.putAll(accesoDatos.obtenerRolesComoMapa());
 	}
 
-	private void cargarAptitudes() throws SQLException {
-		try (ResultSet rs = accesoDatos.consultarAptitudes()) {
-			cargarDesdeResultSet(rs, aptitudes);
-		}
+	private void cargarAptitudes() {
+		aptitudes.putAll(accesoDatos.obtenerAptitudesComoMapa());
 	}
 
-	private void cargarEstadosMision() throws SQLException {
-		try (ResultSet rs = accesoDatos.listarEstadosMision()) {
-			cargarDesdeResultSet(rs, estadosMision);
-		}
+	private void cargarEstadosMision() {
+		estadosMision.putAll(accesoDatos.obtenerEstadosMisionComoMapa());
 	}
 
-	private void cargarEstadosTripulante() throws SQLException {
-		try (ResultSet rs = accesoDatos.listarEstadosTripulante()) {
-			cargarDesdeResultSet(rs, estadosTripulante);
-		}
+	private void cargarEstadosTripulante() {
+		estadosTripulante.putAll(accesoDatos.obtenerEstadosTripulanteComoMapa());
 	}
 
-	private void cargarEstadosEvento() throws SQLException {
-		try (ResultSet rs = accesoDatos.listarEstadosEvento()) {
-			cargarDesdeResultSet(rs, estadosEvento);
-		}
-	}
-
-	private static void cargarDesdeResultSet(ResultSet rs, Map<String, Integer> mapa) throws SQLException {
-		while (rs.next()) {
-			String col2 = rs.getString(2);
-			if (col2 == null) continue;
-			int id;
-			try {
-				id = rs.getInt(1);
-			} catch (Exception e) {
-				continue;
-			}
-			mapa.put(col2.toUpperCase(), id);
-		}
+	private void cargarEstadosEvento() {
+		estadosEvento.putAll(accesoDatos.obtenerEstadosEventoComoMapa());
 	}
 
 	public static Integer getRolID(String nombre) {

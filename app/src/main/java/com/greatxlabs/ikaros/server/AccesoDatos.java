@@ -2026,6 +2026,51 @@ public class AccesoDatos {
         return new SimpleResultSet(filas, 5);
     }
 
+    public Map<String, Integer> obtenerRolesComoMapa() {
+        Map<String, Integer> mapa = new HashMap<>();
+        List<RolJson> roles = leerRolesDesdeJson();
+        for (RolJson r : roles) {
+            mapa.put(r.Rol.toUpperCase(), r.RolID);
+        }
+        return mapa;
+    }
+
+    public Map<String, Integer> obtenerAptitudesComoMapa() {
+        Map<String, Integer> mapa = new HashMap<>();
+        List<AptitudJson> aptitudes = leerAptitudesDesdeJson();
+        for (AptitudJson a : aptitudes) {
+            mapa.put(a.Aptitud.toUpperCase(), a.AptitudID);
+        }
+        return mapa;
+    }
+
+    public Map<String, Integer> obtenerEstadosMisionComoMapa() {
+        Map<String, Integer> mapa = new HashMap<>();
+        List<EstadoMisionJson> estados = leerEstadosMisionDesdeJson();
+        for (EstadoMisionJson e : estados) {
+            mapa.put(e.Estado.toUpperCase(), e.EstadoMID);
+        }
+        return mapa;
+    }
+
+    public Map<String, Integer> obtenerEstadosTripulanteComoMapa() {
+        Map<String, Integer> mapa = new HashMap<>();
+        List<EstadoTripulanteJson> estados = leerEstadosTripulantesDesdeJson();
+        for (EstadoTripulanteJson e : estados) {
+            mapa.put(e.Estado.toUpperCase(), e.EstadoTID);
+        }
+        return mapa;
+    }
+
+    public Map<String, Integer> obtenerEstadosEventoComoMapa() {
+        Map<String, Integer> mapa = new HashMap<>();
+        List<EstadoEventoJson> estados = leerEstadosEventoDesdeJson();
+        for (EstadoEventoJson e : estados) {
+            mapa.put(e.Estado.toUpperCase(), e.EstadoEID);
+        }
+        return mapa;
+    }
+
     public ResultSet verLogs() {
         List<RegistroJson> registros = leerRegistrosDesdeJson();
         List<UsuarioJson> usuarios = leerUsuariosDesdeJson();
