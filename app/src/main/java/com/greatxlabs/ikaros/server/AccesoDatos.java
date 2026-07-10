@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class AccesoDatos {
@@ -42,6 +43,8 @@ public class AccesoDatos {
     private static final SemaforoRW misionLock = new SemaforoRW();
     private static final SemaforoRW eventoLock = new SemaforoRW();
     private static final SemaforoRW registroLock = new SemaforoRW();
+
+    private static final Map<Integer, List<Capacidad>> capacidadesAnteriores = new ConcurrentHashMap<>();
 
     private static void asegurarArchivo(String nombre) throws IOException {
         Path destino = Path.of(Configuracion.getDataDir(), nombre);
@@ -1828,13 +1831,40 @@ public class AccesoDatos {
 
                     capacidades.add(nueva);
                     escribirCapacidadesEnJsonSinLock(capacidades);
+
+                    List<Capacidad> anteriores = capacidadesAnteriores.get(tripulanteID);
+                    Capacidad anterior = null;
+                    if (anteriores != null) {
+                        for (Capacidad c : anteriores) {
+                            if (c.getAptitudID() == aptitudID) {
+                                anterior = c;
+                                break;
+                            }
+                        }
+                        anteriores.removeIf(c -> c.getAptitudID() == aptitudID);
+                        if (anteriores.isEmpty()) {
+                            capacidadesAnteriores.remove(tripulanteID);
+                        }
+                    }
+
                     String nombreAptitud = obtenerNombreAptitudPorId(aptitudID);
                     String nombreTripulante = obtenerNombreCompletoTripulantePorId(tripulanteID);
-                    String descLog = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
-                            + "|Tripulante=" + (nombreTripulante != null ? nombreTripulante : tripulanteID)
-                            + "|Calificacion=" + calificacion
-                            + "|Fecha=" + (fecha != null ? fecha : "");
-                    registrarLog(usuarioIDLogueado, 11, 2, tripulanteID, descLog);
+                    String base = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
+                            + "|Tripulante=" + (nombreTripulante != null ? nombreTripulante : tripulanteID);
+
+                    if (anterior != null) {
+                        if (anterior.getCalificacion() != calificacion) {
+                            String desc = base
+                                    + "|Calificacion:" + anterior.getCalificacion() + "->" + calificacion
+                                    + "|Fecha=" + (fecha != null ? fecha : "");
+                            registrarLog(usuarioIDLogueado, 12, 2, tripulanteID, desc);
+                        }
+                    } else {
+                        String desc = base
+                                + "|Calificacion=" + calificacion
+                                + "|Fecha=" + (fecha != null ? fecha : "");
+                        registrarLog(usuarioIDLogueado, 11, 2, tripulanteID, desc);
+                    }
                 }
             } finally {
                 tripulanteLock.terminarEscritura();
@@ -1854,6 +1884,15 @@ public class AccesoDatos {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
                 List<Capacidad> capacidades = mapper.readValue(ruta.toFile(),
                         new TypeReference<List<Capacidad>>() {});
+
+                List<Capacidad> anteriores = new ArrayList<>();
+                for (Capacidad c : capacidades) {
+                    if (c.getTripulanteID() == tripulanteID) {
+                        anteriores.add(c);
+                    }
+                }
+                capacidadesAnteriores.put(tripulanteID, anteriores);
+
                 capacidades.removeIf(c -> c.getTripulanteID() == tripulanteID);
                 escribirCapacidadesEnJsonSinLock(capacidades);
             } finally {
