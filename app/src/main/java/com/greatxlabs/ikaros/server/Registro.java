@@ -21,7 +21,7 @@ public class Registro {
         this.usuarioID = usuarioID;
         this.tipoEntidadID = tipoEntidadID;
         this.entidadID = entidadID;
-        this.fechaHora = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        this.fechaHora = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
         this.descripcion = descripcion != null ? descripcion : "";
     }
 
