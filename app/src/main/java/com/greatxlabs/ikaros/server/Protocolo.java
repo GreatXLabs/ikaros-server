@@ -238,8 +238,9 @@ public class Protocolo {
 				int nuevoId = rs.getInt(1);
 				String descLog = "Nombre=" + nombre + "|Apellido=" + apellido + "|Sexo=" + sexo + "|Peso=" + peso + "|Altura=" + altura;
 				accesoDatos.registrarLog(loggedInUserID, 8, 2, nuevoId, descLog);
+				return "OK|" + nuevoId;
 			}
-			return formatearDetalle(rs, 1);
+			return "ERROR|E99|Error al registrar tripulante";
 		}
 		case "MODIFICAR_TRIPULANTE": {
 			if (partes.length < 11) return "ERROR|E99|Parámetros insuficientes";
