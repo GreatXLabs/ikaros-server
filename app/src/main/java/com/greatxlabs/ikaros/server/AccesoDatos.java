@@ -479,6 +479,23 @@ public class AccesoDatos {
         return null;
     }
 
+    private String obtenerNombreCompletoTripulantePorId(int tripulanteID) {
+        try {
+            Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
+            List<Tripulante> tripulantes = mapper.readValue(ruta.toFile(), new TypeReference<List<Tripulante>>() {});
+            for (Tripulante t : tripulantes) {
+                if (t.getTripulanteID() == tripulanteID) {
+                    String nombre = t.getNombre() != null ? t.getNombre() : "";
+                    String apellido = t.getApellido() != null ? t.getApellido() : "";
+                    return (nombre + " " + apellido).trim();
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error al leer nombre del tripulante: " + e.getMessage());
+        }
+        return null;
+    }
+
     private String obtenerNombreRolPorId(int rolId) {
         List<RolJson> roles = leerRolesDesdeJson();
         for (RolJson r : roles) {
@@ -1789,11 +1806,14 @@ public class AccesoDatos {
                 boolean existe = false;
                 for (Capacidad c : capacidades) {
                     if (c.getTripulanteID() == tripulanteID && c.getAptitudID() == aptitudID) {
-                        String descFecha = "Calificacion:" + c.getCalificacion() + "->" + calificacion;
+                        String nombreAptitud = obtenerNombreAptitudPorId(aptitudID);
+                        String descFecha = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
+                                + "|Calificacion:" + c.getCalificacion() + "->" + calificacion
+                                + "|Fecha=" + (fecha != null ? fecha : "");
                         c.setCalificacion(calificacion);
                         c.setFechaCapacidades(fecha);
                         escribirCapacidadesEnJsonSinLock(capacidades);
-                        registrarLog(usuarioIDLogueado, 12, 5, tripulanteID, descFecha);
+                        registrarLog(usuarioIDLogueado, 12, 2, tripulanteID, descFecha);
                         existe = true;
                         return;
                     }
@@ -1809,10 +1829,12 @@ public class AccesoDatos {
                     capacidades.add(nueva);
                     escribirCapacidadesEnJsonSinLock(capacidades);
                     String nombreAptitud = obtenerNombreAptitudPorId(aptitudID);
+                    String nombreTripulante = obtenerNombreCompletoTripulantePorId(tripulanteID);
                     String descLog = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
+                            + "|Tripulante=" + (nombreTripulante != null ? nombreTripulante : tripulanteID)
                             + "|Calificacion=" + calificacion
                             + "|Fecha=" + (fecha != null ? fecha : "");
-                    registrarLog(usuarioIDLogueado, 11, 5, tripulanteID, descLog);
+                    registrarLog(usuarioIDLogueado, 11, 2, tripulanteID, descLog);
                 }
             } finally {
                 tripulanteLock.terminarEscritura();
