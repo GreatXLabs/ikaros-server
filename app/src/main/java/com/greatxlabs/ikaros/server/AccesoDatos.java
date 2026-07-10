@@ -1819,66 +1819,49 @@ public class AccesoDatos {
                 List<Capacidad> capacidades = mapper.readValue(ruta.toFile(),
                         new TypeReference<List<Capacidad>>() {});
 
-                boolean existe = false;
                 for (Capacidad c : capacidades) {
                     if (c.getTripulanteID() == tripulanteID && c.getAptitudID() == aptitudID) {
-                        String nombreAptitud = obtenerNombreAptitudPorId(aptitudID);
-                        String descFecha = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
-                                + "|Calificacion:" + c.getCalificacion() + "->" + calificacion
-                                + "|Fecha=" + (fecha != null ? fecha : "");
                         c.setCalificacion(calificacion);
                         c.setFechaCapacidades(fecha);
                         escribirCapacidadesEnJsonSinLock(capacidades);
-                        registrarLog(usuarioIDLogueado, 12, 2, tripulanteID, descFecha);
-                        existe = true;
                         return;
                     }
                 }
 
-                if (!existe) {
-                    Capacidad nueva = new Capacidad();
-                    nueva.setTripulanteID(tripulanteID);
-                    nueva.setAptitudID(aptitudID);
-                    nueva.setCalificacion(calificacion);
-                    nueva.setFechaCapacidades(fecha);
+                Capacidad nueva = new Capacidad();
+                nueva.setTripulanteID(tripulanteID);
+                nueva.setAptitudID(aptitudID);
+                nueva.setCalificacion(calificacion);
+                nueva.setFechaCapacidades(fecha);
+                capacidades.add(nueva);
+                escribirCapacidadesEnJsonSinLock(capacidades);
 
-                    capacidades.add(nueva);
-                    escribirCapacidadesEnJsonSinLock(capacidades);
-
-                    List<Capacidad> anteriores = capacidadesAnteriores.get(tripulanteID);
-                    Capacidad anterior = null;
-                    if (anteriores != null) {
-                        for (Capacidad c : anteriores) {
-                            if (c.getAptitudID() == aptitudID) {
-                                anterior = c;
-                                break;
-                            }
-                        }
-                        anteriores.removeIf(c -> c.getAptitudID() == aptitudID);
-                        if (anteriores.isEmpty()) {
-                            capacidadesAnteriores.remove(tripulanteID);
+                List<Capacidad> anteriores = capacidadesAnteriores.get(tripulanteID);
+                Capacidad anterior = null;
+                if (anteriores != null) {
+                    for (Capacidad c : anteriores) {
+                        if (c.getAptitudID() == aptitudID) {
+                            anterior = c;
+                            break;
                         }
                     }
-
-                    String nombreAptitud = obtenerNombreAptitudPorId(aptitudID);
-                    String nombreTripulante = obtenerNombreCompletoTripulantePorId(tripulanteID);
-                    String base = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
-                            + "|Tripulante=" + (nombreTripulante != null ? nombreTripulante : tripulanteID);
-
-                    if (anterior != null) {
-                        if (anterior.getCalificacion() != calificacion) {
-                            String desc = base
-                                    + "|Calificacion:" + anterior.getCalificacion() + "->" + calificacion
-                                    + "|Fecha=" + (fecha != null ? fecha : "");
-                            registrarLog(usuarioIDLogueado, 12, 2, tripulanteID, desc);
-                        }
-                    } else {
-                        String desc = base
-                                + "|Calificacion=" + calificacion
-                                + "|Fecha=" + (fecha != null ? fecha : "");
-                        registrarLog(usuarioIDLogueado, 11, 2, tripulanteID, desc);
+                    anteriores.removeIf(c -> c.getAptitudID() == aptitudID);
+                    if (anteriores.isEmpty()) {
+                        capacidadesAnteriores.remove(tripulanteID);
                     }
                 }
+
+                if (anterior != null && anterior.getCalificacion() == calificacion) {
+                    return;
+                }
+
+                String nombreAptitud = obtenerNombreAptitudPorId(aptitudID);
+                String nombreTripulante = obtenerNombreCompletoTripulantePorId(tripulanteID);
+                String desc = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
+                        + "|Tripulante=" + (nombreTripulante != null ? nombreTripulante : tripulanteID)
+                        + "|Calificacion=" + calificacion
+                        + "|Fecha=" + (fecha != null ? fecha : "");
+                registrarLog(usuarioIDLogueado, 11, 2, tripulanteID, desc);
             } finally {
                 tripulanteLock.terminarEscritura();
             }
