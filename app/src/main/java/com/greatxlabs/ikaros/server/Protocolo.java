@@ -275,7 +275,7 @@ public class Protocolo {
 			int tripulanteID = parseEntero(partes[2], "tripulanteID");
 			if (accesoDatos.isTripulanteRetirado(tripulanteID))
 				return "ERROR|E08|No se pueden eliminar capacidades de un tripulante que está retirado";
-			accesoDatos.eliminarCapacidades(tripulanteID);
+			accesoDatos.eliminarCapacidades(loggedInUserID, tripulanteID);
 			return "OK|Capacidades eliminadas";
 		}
 		case "REGISTRAR_CAPACIDAD": {

@@ -29,9 +29,15 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 
 public class AccesoDatos {
@@ -45,6 +51,13 @@ public class AccesoDatos {
     private static final SemaforoRW registroLock = new SemaforoRW();
 
     private static final Map<Integer, List<Capacidad>> capacidadesAnteriores = new ConcurrentHashMap<>();
+
+    private static final ScheduledExecutorService capElimScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "cap-elim-scheduler");
+        t.setDaemon(true);
+        return t;
+    });
+    private static final Map<Integer, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
     private static void asegurarArchivo(String nombre) throws IOException {
         Path destino = Path.of(Configuracion.getDataDir(), nombre);
@@ -1875,9 +1888,13 @@ public class AccesoDatos {
         } catch (IOException e) {
             System.err.println("Error al registrar capacidad: " + e.getMessage());
         }
+        if (!capacidadesAnteriores.containsKey(tripulanteID)) {
+            ScheduledFuture<?> task = scheduledTasks.remove(tripulanteID);
+            if (task != null) task.cancel(false);
+        }
     }
 
-    public void eliminarCapacidades(int tripulanteID) {
+    public void eliminarCapacidades(int usuarioIDLogueado, int tripulanteID) {
         try {
             tripulanteLock.iniciarEscritura();
             try {
@@ -1892,9 +1909,16 @@ public class AccesoDatos {
                     }
                 }
                 capacidadesAnteriores.put(tripulanteID, anteriores);
+                List<Capacidad> snapshot = new ArrayList<>(anteriores);
 
                 capacidades.removeIf(c -> c.getTripulanteID() == tripulanteID);
                 escribirCapacidadesEnJsonSinLock(capacidades);
+
+                ScheduledFuture<?> prev = scheduledTasks.remove(tripulanteID);
+                if (prev != null) prev.cancel(false);
+                scheduledTasks.put(tripulanteID, capElimScheduler.schedule(
+                        () -> loguearCapacidadesEliminadas(usuarioIDLogueado, tripulanteID, snapshot),
+                        500, TimeUnit.MILLISECONDS));
             } finally {
                 tripulanteLock.terminarEscritura();
             }
@@ -1903,6 +1927,31 @@ public class AccesoDatos {
             System.err.println("Operación interrumpida al eliminar capacidades: " + e.getMessage());
         } catch (IOException e) {
             System.err.println("Error al eliminar capacidades: " + e.getMessage());
+        }
+    }
+
+    private void loguearCapacidadesEliminadas(int usuarioIDLogueado, int tripulanteID, List<Capacidad> snapshot) {
+        scheduledTasks.remove(tripulanteID);
+        if (snapshot == null || snapshot.isEmpty()) return;
+
+        List<Capacidad> actuales = capacidadesAnteriores.get(tripulanteID);
+        Set<Integer> aptitudesActuales = new HashSet<>();
+        if (actuales != null) {
+            for (Capacidad c : actuales) {
+                aptitudesActuales.add(c.getAptitudID());
+            }
+        }
+
+        String nombreTripulante = obtenerNombreCompletoTripulantePorId(tripulanteID);
+        for (Capacidad c : snapshot) {
+            if (!aptitudesActuales.contains(c.getAptitudID())) {
+                String nombreAptitud = obtenerNombreAptitudPorId(c.getAptitudID());
+                String desc = "Aptitud eliminada=" + (nombreAptitud != null ? nombreAptitud : c.getAptitudID())
+                        + "|Tripulante=" + (nombreTripulante != null ? nombreTripulante : tripulanteID)
+                        + "|Calificacion=" + c.getCalificacion()
+                        + "|Fecha=" + (c.getFechaCapacidades() != null ? c.getFechaCapacidades() : "");
+                registrarLog(usuarioIDLogueado, 9, 2, tripulanteID, desc);
+            }
         }
     }
 
