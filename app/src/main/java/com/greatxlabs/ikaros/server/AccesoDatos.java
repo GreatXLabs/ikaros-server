@@ -1219,8 +1219,9 @@ public class AccesoDatos {
 
                 if (!encontrado) throw new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioID);
                 escribirUsuariosEnJsonSinLock(usuarios);
-                String descStr = desc.length() > 0 ? desc.toString() : "Sin cambios";
-                registrarLog(usuarioIDLogueado, 14, 4, usuarioID, descStr);
+                if (desc.length() > 0) {
+                    registrarLog(usuarioIDLogueado, 14, 4, usuarioID, desc.toString());
+                }
             } finally {
                 jsonLock.terminarEscritura();
             }
@@ -1377,8 +1378,9 @@ public class AccesoDatos {
                     }
                 }
                 escribirMisionesEnJsonSinLock(misiones);
-                String descStr = descChanges.length() > 0 ? descChanges.toString() : "Sin cambios";
-                registrarLog(usuarioIDLogueado, 2, 1, id, descStr);
+                if (descChanges.length() > 0) {
+                    registrarLog(usuarioIDLogueado, 2, 1, id, descChanges.toString());
+                }
             } finally {
                 misionLock.terminarEscritura();
             }
@@ -1572,8 +1574,9 @@ public class AccesoDatos {
                 }
 
                 escribirTripulantesEnJsonSinLock(tripulantes);
-                String descStr = desc.length() > 0 ? desc.toString() : "Sin cambios";
-                registrarLog(usuarioIDLogueado, 9, 2, tripulanteID, descStr);
+                if (desc.length() > 0) {
+                    registrarLog(usuarioIDLogueado, 9, 2, tripulanteID, desc.toString());
+                }
             } finally {
                 tripulanteLock.terminarEscritura();
             }
@@ -1805,7 +1808,10 @@ public class AccesoDatos {
 
                     capacidades.add(nueva);
                     escribirCapacidadesEnJsonSinLock(capacidades);
-                    String descLog = "TripulanteID=" + tripulanteID + "|AptitudID=" + aptitudID + "|Calificacion=" + calificacion;
+                    String nombreAptitud = obtenerNombreAptitudPorId(aptitudID);
+                    String descLog = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
+                            + "|Calificacion=" + calificacion
+                            + "|Fecha=" + (fecha != null ? fecha : "");
                     registrarLog(usuarioIDLogueado, 11, 5, tripulanteID, descLog);
                 }
             } finally {
