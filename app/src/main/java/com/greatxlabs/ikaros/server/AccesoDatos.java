@@ -189,16 +189,8 @@ public class AccesoDatos {
 
     private List<RolJson> leerRolesDesdeJson() {
         try {
-            jsonLock.iniciarLectura();
-            try {
-                Path ruta = Path.of(Configuracion.getDataDir(), "Roles.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<RolJson>>() {});
-            } finally {
-                jsonLock.terminarLectura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return Collections.emptyList();
+            Path ruta = Path.of(Configuracion.getDataDir(), "Roles.json");
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<RolJson>>() {});
         } catch (Exception e) {
             System.err.println("Error al leer Roles.json: " + e.getMessage());
             return Collections.emptyList();
@@ -207,16 +199,8 @@ public class AccesoDatos {
 
     private List<EstadoJson> leerEstadosDesdeJson() {
         try {
-            jsonLock.iniciarLectura();
-            try {
-                Path ruta = Path.of(Configuracion.getDataDir(), "EstadosUsuarios.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoJson>>() {});
-            } finally {
-                jsonLock.terminarLectura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return Collections.emptyList();
+            Path ruta = Path.of(Configuracion.getDataDir(), "EstadosUsuarios.json");
+            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoJson>>() {});
         } catch (Exception e) {
             System.err.println("Error al leer EstadosUsuarios.json: " + e.getMessage());
             return Collections.emptyList();
