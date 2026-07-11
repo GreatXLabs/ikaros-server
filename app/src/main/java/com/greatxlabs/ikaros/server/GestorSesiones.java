@@ -54,7 +54,7 @@ public class GestorSesiones {
             boolean credencialesValidas = accesoDatos.validarLogin(usuario, clave);
             if (!credencialesValidas) return null;
 
-            AccesoDatos.UsuarioLoginResult datos = accesoDatos.obtenerDatosUsuarioParaLogin(usuario);
+            Usuario.UsuarioLoginResult datos = accesoDatos.obtenerDatosUsuarioParaLogin(usuario);
             if (datos == null) return null;
 
             String token = UUID.randomUUID().toString().substring(0, 8);
