@@ -192,6 +192,7 @@ public class Evento {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
                 List<Evento> eventos = mapper.readValue(ruta.toFile(),
                         new TypeReference<List<Evento>>() {});
+                boolean encontrado = false;
                 for (Evento e : eventos) {
                     if (e.getEventoID() == eventoID) {
                         String estadoAnterior = obtenerNombreEstadoPorId(e.getEstadoEID());
@@ -199,10 +200,13 @@ public class Evento {
                         String estadoActual = obtenerNombreEstadoPorId(e.getEstadoEID());
                         escribirEnJsonSinLock(eventos);
                         desc = "Estado:" + estadoAnterior + "->" + estadoActual;
-                        return;
+                        encontrado = true;
+                        break;
                     }
                 }
-                escribirEnJsonSinLock(eventos);
+                if (!encontrado) {
+                    escribirEnJsonSinLock(eventos);
+                }
             } finally {
                 eventoLock.terminarEscritura();
             }
