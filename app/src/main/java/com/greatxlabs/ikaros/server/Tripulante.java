@@ -88,12 +88,6 @@ public class Tripulante {
         public SexoJson() {}
     }
 
-    static class AptitudJson {
-        public int AptitudID;
-        public String Aptitud;
-        public AptitudJson() {}
-    }
-
     // --- Infrastructure ---
 
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -124,41 +118,6 @@ public class Tripulante {
         Path tmp = Files.createTempFile(ruta.getParent(), "Tripulantes", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), tripulantes);
         Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
-    }
-
-    static List<Capacidad> leerCapacidadesDesdeJson() {
-        try {
-            tripulanteLock.iniciarLectura();
-            try {
-                Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<Capacidad>>() {});
-            } finally {
-                tripulanteLock.terminarLectura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return Collections.emptyList();
-        } catch (Exception e) {
-            System.err.println("Error al leer Capacidades.json: " + e.getMessage());
-            return Collections.emptyList();
-        }
-    }
-
-    static void escribirCapacidadesEnJsonSinLock(List<Capacidad> capacidades) throws IOException {
-        Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
-        Path tmp = Files.createTempFile(ruta.getParent(), "Capacidades", ".tmp");
-        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), capacidades);
-        Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
-    }
-
-    static List<AptitudJson> leerAptitudesDesdeJson() {
-        try {
-            Path ruta = Path.of(Configuracion.getDataDir(), "Aptitudes.json");
-            return mapper.readValue(ruta.toFile(), new TypeReference<List<AptitudJson>>() {});
-        } catch (Exception e) {
-            System.err.println("Error al leer Aptitudes.json: " + e.getMessage());
-            return Collections.emptyList();
-        }
     }
 
     static List<EstadoTripulante> leerEstadosDesdeJson() {
@@ -199,14 +158,6 @@ public class Tripulante {
         return null;
     }
 
-    static String obtenerNombreAptitudPorId(int aptitudID) {
-        List<AptitudJson> aptitudes = leerAptitudesDesdeJson();
-        for (AptitudJson a : aptitudes) {
-            if (a.AptitudID == aptitudID) return a.Aptitud;
-        }
-        return null;
-    }
-
     static String obtenerNombreCompletoPorId(int tripulanteID) {
         List<Tripulante> tripulantes = leerDesdeJson();
         for (Tripulante t : tripulantes) {
@@ -226,15 +177,6 @@ public class Tripulante {
         List<EstadoTripulante> estados = leerEstadosDesdeJson();
         for (EstadoTripulante e : estados) {
             mapa.put(e.Estado.toUpperCase(), e.EstadoTID);
-        }
-        return mapa;
-    }
-
-    static Map<String, Integer> obtenerAptitudesComoMapa() {
-        Map<String, Integer> mapa = new HashMap<>();
-        List<AptitudJson> aptitudes = leerAptitudesDesdeJson();
-        for (AptitudJson a : aptitudes) {
-            mapa.put(a.Aptitud.toUpperCase(), a.AptitudID);
         }
         return mapa;
     }
@@ -485,97 +427,4 @@ public class Tripulante {
         return false;
     }
 
-    // --- Capacidad operations ---
-
-    static ResultSet consultarCapacidades(int tripulanteID) {
-        List<Capacidad> capacidades = leerCapacidadesDesdeJson();
-        List<String[]> filas = new ArrayList<>();
-        for (Capacidad c : capacidades) {
-            if (c.getTripulanteID() == tripulanteID) {
-                filas.add(new String[]{
-                    String.valueOf(c.getAptitudID()),
-                    obtenerNombreAptitudPorId(c.getAptitudID()),
-                    String.valueOf(c.getCalificacion()),
-                    c.getFechaCapacidades() != null ? c.getFechaCapacidades() : ""
-                });
-            }
-        }
-        return new AccesoDatos.SimpleResultSet(filas, 4);
-    }
-
-    static void registrarCapacidad(int usuarioIDLogueado, int tripulanteID, int aptitudID, int calificacion, String fecha, AccesoDatos ad) {
-        String desc = null;
-        try {
-            tripulanteLock.iniciarEscritura();
-            try {
-                Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
-                List<Capacidad> capacidades = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<Capacidad>>() {});
-
-                for (Capacidad c : capacidades) {
-                    if (c.getTripulanteID() == tripulanteID && c.getAptitudID() == aptitudID) {
-                        c.setCalificacion(calificacion);
-                        c.setFechaCapacidades(fecha);
-                        escribirCapacidadesEnJsonSinLock(capacidades);
-                        return;
-                    }
-                }
-
-                Capacidad nueva = new Capacidad();
-                nueva.setTripulanteID(tripulanteID);
-                nueva.setAptitudID(aptitudID);
-                nueva.setCalificacion(calificacion);
-                nueva.setFechaCapacidades(fecha);
-                capacidades.add(nueva);
-                escribirCapacidadesEnJsonSinLock(capacidades);
-
-                String nombreAptitud = obtenerNombreAptitudPorId(aptitudID);
-                String nombreTripulante = obtenerNombreCompletoPorId(tripulanteID);
-                desc = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
-                        + "|Tripulante=" + (nombreTripulante != null ? nombreTripulante : tripulanteID)
-                        + "|Calificacion=" + calificacion
-                        + "|Fecha=" + (fecha != null ? fecha : "");
-            } finally {
-                tripulanteLock.terminarEscritura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            System.err.println("Operacion interrumpida al registrar capacidad: " + e.getMessage());
-        } catch (IOException e) {
-            System.err.println("Error al registrar capacidad: " + e.getMessage());
-        }
-        if (desc != null) {
-            ad.registrarLog(usuarioIDLogueado, 11, 2, tripulanteID, desc);
-        }
-    }
-
-    static void eliminarCapacidades(int tripulanteID) {
-        try {
-            tripulanteLock.iniciarEscritura();
-            try {
-                Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
-                List<Capacidad> capacidades = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<Capacidad>>() {});
-
-                capacidades.removeIf(c -> c.getTripulanteID() == tripulanteID);
-                escribirCapacidadesEnJsonSinLock(capacidades);
-            } finally {
-                tripulanteLock.terminarEscritura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            System.err.println("Operacion interrumpida al eliminar capacidades: " + e.getMessage());
-        } catch (IOException e) {
-            System.err.println("Error al eliminar capacidades: " + e.getMessage());
-        }
-    }
-
-    static ResultSet consultarAptitudes() {
-        List<AptitudJson> aptitudes = leerAptitudesDesdeJson();
-        List<String[]> filas = new ArrayList<>();
-        for (AptitudJson a : aptitudes) {
-            filas.add(new String[]{String.valueOf(a.AptitudID), a.Aptitud});
-        }
-        return new AccesoDatos.SimpleResultSet(filas, 2);
-    }
 }

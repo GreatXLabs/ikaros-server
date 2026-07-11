@@ -783,7 +783,7 @@ public class AccesoDatos {
     }
 
     public ResultSet consultarAptitudes() {
-        return Tripulante.consultarAptitudes();
+        return Capacidad.consultarAptitudes();
     }
 
     public ResultSet listarEstadosMision() throws SQLException {
@@ -1088,15 +1088,15 @@ public class AccesoDatos {
     }
 
     public ResultSet consultarCapacidades(int tripulanteID) {
-        return Tripulante.consultarCapacidades(tripulanteID);
+        return Capacidad.consultar(tripulanteID);
     }
 
     public void registrarCapacidad(int usuarioIDLogueado, int tripulanteID, int aptitudID, int calificacion, String fecha) {
-        Tripulante.registrarCapacidad(usuarioIDLogueado, tripulanteID, aptitudID, calificacion, fecha, this);
+        Capacidad.registrar(usuarioIDLogueado, tripulanteID, aptitudID, calificacion, fecha, this);
     }
 
     public void eliminarCapacidades(int tripulanteID) {
-        Tripulante.eliminarCapacidades(tripulanteID);
+        Capacidad.eliminar(tripulanteID);
     }
 
     public int registrarEvento(int usuarioIDLogueado, int misionID, String titulo, String desc, Timestamp fecha) {
@@ -1125,7 +1125,7 @@ public class AccesoDatos {
     }
 
     public Map<String, Integer> obtenerAptitudesComoMapa() {
-        return Tripulante.obtenerAptitudesComoMapa();
+        return Capacidad.obtenerAptitudesComoMapa();
     }
 
     public Map<String, Integer> obtenerEstadosMisionComoMapa() {
