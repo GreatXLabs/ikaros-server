@@ -38,7 +38,6 @@ public class AccesoDatos {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private static final SemaforoRW jsonLock = new SemaforoRW();
-    private static final SemaforoRW registroLock = new SemaforoRW();
 
     private static void asegurarArchivo(String nombre) throws IOException {
         Path destino = Path.of(Configuracion.getDataDir(), nombre);
@@ -108,18 +107,6 @@ public class AccesoDatos {
         public EstadoJson() {}
     }
 
-    private static class AccionJson {
-        public int AccionID;
-        public String Accion;
-        public AccionJson() {}
-    }
-
-    private static class EntidadJson {
-        public int TipoEntidadID;
-        public String TipoEntidad;
-        public EntidadJson() {}
-    }
-
     private List<Usuario> leerUsuariosDesdeJson() {
         try {
             jsonLock.iniciarLectura();
@@ -163,67 +150,6 @@ public class AccesoDatos {
             System.err.println("Error al leer EstadosUsuarios.json: " + e.getMessage());
             return Collections.emptyList();
         }
-    }
-
-    private List<AccionJson> leerAccionesDesdeJson() {
-        try {
-            Path ruta = Path.of(Configuracion.getDataDir(), "Acciones.json");
-            return mapper.readValue(ruta.toFile(), new TypeReference<List<AccionJson>>() {});
-        } catch (Exception e) {
-            System.err.println("Error al leer Acciones.json: " + e.getMessage());
-            return Collections.emptyList();
-        }
-    }
-
-    private List<EntidadJson> leerEntidadesDesdeJson() {
-        try {
-            Path ruta = Path.of(Configuracion.getDataDir(), "Entidades.json");
-            return mapper.readValue(ruta.toFile(), new TypeReference<List<EntidadJson>>() {});
-        } catch (Exception e) {
-            System.err.println("Error al leer Entidades.json: " + e.getMessage());
-            return Collections.emptyList();
-        }
-    }
-
-    private List<Registro> leerRegistrosDesdeJson() {
-        try {
-            registroLock.iniciarLectura();
-            try {
-                Path ruta = Path.of(Configuracion.getDataDir(), "Registros.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<Registro>>() {});
-            } finally {
-                registroLock.terminarLectura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return Collections.emptyList();
-        } catch (Exception e) {
-            System.err.println("Error al leer Registros.json: " + e.getMessage());
-            return Collections.emptyList();
-        }
-    }
-
-    private void escribirRegistrosEnJsonSinLock(List<Registro> registros) throws IOException {
-        Path ruta = Path.of(Configuracion.getDataDir(), "Registros.json");
-        Path tmp = Files.createTempFile(ruta.getParent(), "Registros", ".tmp");
-        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), registros);
-        Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
-    }
-
-    private String obtenerNombreAccionPorId(int accionID) {
-        List<AccionJson> acciones = leerAccionesDesdeJson();
-        for (AccionJson a : acciones) {
-            if (a.AccionID == accionID) return a.Accion;
-        }
-        return null;
-    }
-
-    private String obtenerNombreEntidadPorId(int tipoEntidadID) {
-        List<EntidadJson> entidades = leerEntidadesDesdeJson();
-        for (EntidadJson e : entidades) {
-            if (e.TipoEntidadID == tipoEntidadID) return e.TipoEntidad;
-        }
-        return null;
     }
 
     private String obtenerNombreRolPorId(int rolId) {
@@ -799,31 +725,7 @@ public class AccesoDatos {
     }
 
     public void registrarLog(int usuarioID, int accionID, int tipoEntidadID, int entidadID, String descripcion) {
-        try {
-            registroLock.iniciarEscritura();
-            try {
-                Path ruta = Path.of(Configuracion.getDataDir(), "Registros.json");
-                List<Registro> registros = mapper.readValue(ruta.toFile(),
-                        new TypeReference<List<Registro>>() {});
-
-                int nuevoId = 1;
-                for (Registro r : registros) {
-                    if (r.getRegistroID() >= nuevoId) nuevoId = r.getRegistroID() + 1;
-                }
-
-                Registro nuevo = new Registro(nuevoId, accionID, usuarioID, tipoEntidadID, entidadID, descripcion);
-
-                registros.add(nuevo);
-                escribirRegistrosEnJsonSinLock(registros);
-            } finally {
-                registroLock.terminarEscritura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            System.err.println("Operación interrumpida al registrar log: " + e.getMessage());
-        } catch (IOException e) {
-            System.err.println("Error al registrar log: " + e.getMessage());
-        }
+        Registro.registrarLog(usuarioID, accionID, tipoEntidadID, entidadID, descripcion);
     }
 
     public int obtenerUsuarioID(String usuario) {
@@ -1141,7 +1043,7 @@ public class AccesoDatos {
     }
 
     public ResultSet verLogs() {
-        List<Registro> registros = leerRegistrosDesdeJson();
+        List<Registro> registros = Registro.leerDesdeJson();
         List<Usuario> usuarios = leerUsuariosDesdeJson();
         List<RolJson> roles = leerRolesDesdeJson();
         List<String[]> filas = new ArrayList<>();
@@ -1160,8 +1062,8 @@ public class AccesoDatos {
                     break;
                 }
             }
-            String nombreAccion = obtenerNombreAccionPorId(r.getAccionMID());
-            String nombreEntidad = obtenerNombreEntidadPorId(r.getTipoEntidadID());
+            String nombreAccion = Registro.obtenerNombreAccionPorId(r.getAccionMID());
+            String nombreEntidad = Registro.obtenerNombreEntidadPorId(r.getTipoEntidadID());
             filas.add(new String[]{
                 String.valueOf(r.getRegistroID()),
                 nombreUsuario,
