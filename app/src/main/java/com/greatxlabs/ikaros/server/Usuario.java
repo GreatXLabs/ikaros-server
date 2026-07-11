@@ -354,7 +354,7 @@ public class Usuario {
                 usuarioLock.terminarEscritura();
             }
             if (encontrado) {
-                Registro.registrarLog(usuarioIDLogueado, 17, 4, usuarioID, desc);
+                Registro.registrarLog(usuarioIDLogueado, 14, 4, usuarioID, desc);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -394,7 +394,7 @@ public class Usuario {
                     usuarioLock.terminarEscritura();
                 }
                 if (encontrado) {
-                    Registro.registrarLog(usuarioIDLogueado, 17, 4, targetID, desc);
+                    Registro.registrarLog(usuarioIDLogueado, 14, 4, targetID, desc);
                 }
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();

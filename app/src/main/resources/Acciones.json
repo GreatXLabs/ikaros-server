@@ -62,9 +62,5 @@
   {
     "AccionID": 16,
     "Accion": "Cierre de Sesion"
-  },
-  {
-    "AccionID": 17,
-    "Accion": "Baja Usuario"
   }
 ]
