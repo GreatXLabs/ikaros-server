@@ -38,7 +38,6 @@ public class AccesoDatos {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private static final SemaforoRW jsonLock = new SemaforoRW();
-    private static final SemaforoRW eventoLock = new SemaforoRW();
     private static final SemaforoRW registroLock = new SemaforoRW();
 
     private static void asegurarArchivo(String nombre) throws IOException {
@@ -109,12 +108,6 @@ public class AccesoDatos {
         public EstadoJson() {}
     }
 
-    private static class EstadoEvento {
-        public int EstadoEID;
-        public String Estado;
-        public EstadoEvento() {}
-    }
-
     private static class AccionJson {
         public int AccionID;
         public String Accion;
@@ -168,41 +161,6 @@ public class AccesoDatos {
             return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoJson>>() {});
         } catch (Exception e) {
             System.err.println("Error al leer EstadosUsuarios.json: " + e.getMessage());
-            return Collections.emptyList();
-        }
-    }
-
-    private List<Evento> leerEventosDesdeJson() {
-        try {
-            eventoLock.iniciarLectura();
-            try {
-                Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
-                return mapper.readValue(ruta.toFile(), new TypeReference<List<Evento>>() {});
-            } finally {
-                eventoLock.terminarLectura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return Collections.emptyList();
-        } catch (Exception e) {
-            System.err.println("Error al leer Eventos.json: " + e.getMessage());
-            return Collections.emptyList();
-        }
-    }
-
-    private void escribirEventosEnJsonSinLock(List<Evento> eventos) throws IOException {
-        Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
-        Path tmp = Files.createTempFile(ruta.getParent(), "Eventos", ".tmp");
-        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), eventos);
-        Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
-    }
-
-    private List<EstadoEvento> leerEstadosEventoDesdeJson() {
-        try {
-            Path ruta = Path.of(Configuracion.getDataDir(), "EstadosEventos.json");
-            return mapper.readValue(ruta.toFile(), new TypeReference<List<EstadoEvento>>() {});
-        } catch (Exception e) {
-            System.err.println("Error al leer EstadosEventos.json: " + e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -288,21 +246,8 @@ public class AccesoDatos {
         return null;
     }
 
-    private String obtenerNombreEstadoEventoPorId(int estadoEID) {
-        List<EstadoEvento> estados = leerEstadosEventoDesdeJson();
-        for (EstadoEvento e : estados) {
-            if (e.EstadoEID == estadoEID) return e.Estado;
-        }
-        return null;
-    }
-
     private String obtenerNombreMisionPorId(int misionID) {
         return Mision.obtenerNombrePorId(misionID);
-    }
-
-    private static String tsToString(Timestamp ts) {
-        if (ts == null) return null;
-        return ts.toLocalDateTime().toString();
     }
 
     private static final String[] COLUMNAS_USUARIO = {
@@ -850,12 +795,7 @@ public class AccesoDatos {
     }
 
     public ResultSet listarEstadosEvento() throws SQLException {
-        List<EstadoEvento> estados = leerEstadosEventoDesdeJson();
-        List<String[]> filas = new ArrayList<>();
-        for (EstadoEvento e : estados) {
-            filas.add(new String[]{String.valueOf(e.EstadoEID), e.Estado});
-        }
-        return new SimpleResultSet(filas, 2);
+        return Evento.listarEstados();
     }
 
     public void registrarLog(int usuarioID, int accionID, int tipoEntidadID, int entidadID, String descripcion) {
@@ -1160,100 +1100,19 @@ public class AccesoDatos {
     }
 
     public int registrarEvento(int usuarioIDLogueado, int misionID, String titulo, String desc, Timestamp fecha) {
-        try {
-            eventoLock.iniciarEscritura();
-            try {
-                Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
-                List<Evento> eventos = mapper.readValue(ruta.toFile(), new TypeReference<List<Evento>>() {});
-
-                int nuevoId = 1;
-                for (Evento e : eventos) {
-                    if (e.getEventoID() >= nuevoId) nuevoId = e.getEventoID() + 1;
-                }
-
-                Evento nuevo = new Evento();
-                nuevo.setEventoID(nuevoId);
-                nuevo.setMisionID(misionID);
-                nuevo.setTitulo(titulo);
-                nuevo.setFecha(tsToString(fecha));
-                nuevo.setDescripcion(desc);
-                nuevo.setEstadoEID(1);
-
-                eventos.add(nuevo);
-                escribirEventosEnJsonSinLock(eventos);
-                String descLog = "MisionID=" + misionID + "|Titulo=" + titulo + "|Descripcion=" + desc;
-                registrarLog(usuarioIDLogueado, 6, 3, nuevoId, descLog);
-                return nuevoId;
-            } finally {
-                eventoLock.terminarEscritura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } catch (IOException e) {
-            System.err.println("Error al registrar evento: " + e.getMessage());
-        }
-        return -1;
+        return Evento.registrar(usuarioIDLogueado, misionID, titulo, desc, fecha, this);
     }
 
     public void bajaEvento(int usuarioIDLogueado, int eventoID) {
-        try {
-            eventoLock.iniciarEscritura();
-            try {
-                Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
-                List<Evento> eventos = mapper.readValue(ruta.toFile(), new TypeReference<List<Evento>>() {});
-                for (Evento e : eventos) {
-                    if (e.getEventoID() == eventoID) {
-                        String estadoAnterior = obtenerNombreEstadoEventoPorId(e.getEstadoEID());
-                        e.desestimar();
-                        String estadoActual = obtenerNombreEstadoEventoPorId(e.getEstadoEID());
-                        escribirEventosEnJsonSinLock(eventos);
-                        String desc = "Estado:" + estadoAnterior + "->" + estadoActual;
-                        registrarLog(usuarioIDLogueado, 7, 3, eventoID, desc);
-                        return;
-                    }
-                }
-                escribirEventosEnJsonSinLock(eventos);
-            } finally {
-                eventoLock.terminarEscritura();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } catch (IOException e) {
-            System.err.println("Error al desestimar evento: " + e.getMessage());
-        }
+        Evento.baja(usuarioIDLogueado, eventoID, this);
     }
 
     public ResultSet listarEventos() throws SQLException {
-        List<Evento> eventos = leerEventosDesdeJson();
-        List<String[]> filas = new ArrayList<>();
-        for (Evento e : eventos) {
-            filas.add(new String[]{
-                String.valueOf(e.getEventoID()),
-                obtenerNombreMisionPorId(e.getMisionID()),
-                e.getTitulo() != null ? e.getTitulo() : "",
-                e.getFecha() != null ? e.getFecha() : "",
-                e.getDescripcion() != null ? e.getDescripcion() : "",
-                obtenerNombreEstadoEventoPorId(e.getEstadoEID())
-            });
-        }
-        return new SimpleResultSet(filas, 6);
+        return Evento.listar();
     }
 
     public ResultSet consultarEventos(int misionID) throws SQLException {
-        List<Evento> eventos = leerEventosDesdeJson();
-        List<String[]> filas = new ArrayList<>();
-        for (Evento e : eventos) {
-            if (e.getMisionID() == misionID) {
-                filas.add(new String[]{
-                    String.valueOf(e.getEventoID()),
-                    e.getTitulo() != null ? e.getTitulo() : "",
-                    e.getFecha() != null ? e.getFecha() : "",
-                    e.getDescripcion() != null ? e.getDescripcion() : "",
-                    obtenerNombreEstadoEventoPorId(e.getEstadoEID())
-                });
-            }
-        }
-        return new SimpleResultSet(filas, 5);
+        return Evento.consultarPorMision(misionID);
     }
 
     public Map<String, Integer> obtenerRolesComoMapa() {
@@ -1278,12 +1137,7 @@ public class AccesoDatos {
     }
 
     public Map<String, Integer> obtenerEstadosEventoComoMapa() {
-        Map<String, Integer> mapa = new HashMap<>();
-        List<EstadoEvento> estados = leerEstadosEventoDesdeJson();
-        for (EstadoEvento e : estados) {
-            mapa.put(e.Estado.toUpperCase(), e.EstadoEID);
-        }
-        return mapa;
+        return Evento.obtenerEstadosComoMapa();
     }
 
     public ResultSet verLogs() {
