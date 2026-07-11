@@ -130,6 +130,7 @@ public class Protocolo {
 			String nombre = partes[4];
 			String apellido = partes[5];
 			String rol = partes[6];
+			if ("JEFE".equals(rol.toUpperCase())) return "ERROR|E99|No se puede crear cuentas con rol Jefe";
 			int nuevoId = accesoDatos.registrarUsuario(CacheMaestra.getRolID(rol), usuario, nombre, apellido, clave);
 			String descLog = "Usuario=" + usuario + "|Nombre=" + nombre + "|Apellido=" + apellido + "|Rol=" + rol;
 			accesoDatos.registrarLog(loggedInUserID, 13, 4, nuevoId, descLog);
