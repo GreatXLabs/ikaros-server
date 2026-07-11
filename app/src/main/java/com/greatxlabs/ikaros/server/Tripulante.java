@@ -123,9 +123,7 @@ public class Tripulante {
         Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
         Path tmp = Files.createTempFile(ruta.getParent(), "Tripulantes", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), tripulantes);
-        Files.move(tmp, ruta,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
+        Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
     }
 
     static List<Capacidad> leerCapacidadesDesdeJson() {
@@ -150,9 +148,7 @@ public class Tripulante {
         Path ruta = Path.of(Configuracion.getDataDir(), "Capacidades.json");
         Path tmp = Files.createTempFile(ruta.getParent(), "Capacidades", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), capacidades);
-        Files.move(tmp, ruta,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
+        Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
     }
 
     static List<AptitudJson> leerAptitudesDesdeJson() {
@@ -301,55 +297,56 @@ public class Tripulante {
 
     static void modificar(int usuarioIDLogueado, int tripulanteID, int estadoTID, int sexoID, int peso, int altura,
             String nombre, String apellido, String imagen, Date fechaNacimiento, AccesoDatos ad) {
+        String desc = null;
         try {
             tripulanteLock.iniciarEscritura();
             try {
                 Path ruta = Path.of(Configuracion.getDataDir(), "Tripulantes.json");
                 List<Tripulante> tripulantes = mapper.readValue(ruta.toFile(),
                         new TypeReference<List<Tripulante>>() {});
-                StringBuilder desc = new StringBuilder();
+                StringBuilder descBuilder = new StringBuilder();
 
                 for (Tripulante t : tripulantes) {
                     if (t.getTripulanteID() == tripulanteID) {
                         if (t.getEstadoTID() != estadoTID) {
-                            if (desc.length() > 0) desc.append("|");
-                            desc.append("Estado:").append(obtenerNombreEstadoPorId(t.getEstadoTID())).append("->").append(obtenerNombreEstadoPorId(estadoTID));
+                            if (descBuilder.length() > 0) descBuilder.append("|");
+                            descBuilder.append("Estado:").append(obtenerNombreEstadoPorId(t.getEstadoTID())).append("->").append(obtenerNombreEstadoPorId(estadoTID));
                             t.setEstadoTID(estadoTID);
                         }
                         if (t.getSexoID() != sexoID) {
-                            if (desc.length() > 0) desc.append("|");
-                            desc.append("Sexo:").append(obtenerNombreSexoPorId(t.getSexoID())).append("->").append(obtenerNombreSexoPorId(sexoID));
+                            if (descBuilder.length() > 0) descBuilder.append("|");
+                            descBuilder.append("Sexo:").append(obtenerNombreSexoPorId(t.getSexoID())).append("->").append(obtenerNombreSexoPorId(sexoID));
                             t.setSexoID(sexoID);
                         }
                         if (t.getPeso() != peso) {
-                            if (desc.length() > 0) desc.append("|");
-                            desc.append("Peso:").append(t.getPeso()).append("->").append(peso);
+                            if (descBuilder.length() > 0) descBuilder.append("|");
+                            descBuilder.append("Peso:").append(t.getPeso()).append("->").append(peso);
                             t.setPeso(peso);
                         }
                         if (t.getAltura() != altura) {
-                            if (desc.length() > 0) desc.append("|");
-                            desc.append("Altura:").append(t.getAltura()).append("->").append(altura);
+                            if (descBuilder.length() > 0) descBuilder.append("|");
+                            descBuilder.append("Altura:").append(t.getAltura()).append("->").append(altura);
                             t.setAltura(altura);
                         }
                         if (nombre != null && !nombre.equals(t.getNombre())) {
-                            if (desc.length() > 0) desc.append("|");
-                            desc.append("Nombre:").append(t.getNombre()).append("->").append(nombre);
+                            if (descBuilder.length() > 0) descBuilder.append("|");
+                            descBuilder.append("Nombre:").append(t.getNombre()).append("->").append(nombre);
                             t.setNombre(nombre);
                         }
                         if (apellido != null && !apellido.equals(t.getApellido())) {
-                            if (desc.length() > 0) desc.append("|");
-                            desc.append("Apellido:").append(t.getApellido()).append("->").append(apellido);
+                            if (descBuilder.length() > 0) descBuilder.append("|");
+                            descBuilder.append("Apellido:").append(t.getApellido()).append("->").append(apellido);
                             t.setApellido(apellido);
                         }
                         if (imagen != null && !imagen.equals(t.getImagen())) {
-                            if (desc.length() > 0) desc.append("|");
-                            desc.append("Imagen:").append(t.getImagen()).append("->").append(imagen);
+                            if (descBuilder.length() > 0) descBuilder.append("|");
+                            descBuilder.append("Imagen:").append(t.getImagen()).append("->").append(imagen);
                             t.setImagen(imagen);
                         }
                         String newFecha = fechaNacimiento.toString();
                         if (!newFecha.equals(t.getFechaDeNacimiento())) {
-                            if (desc.length() > 0) desc.append("|");
-                            desc.append("FechaNacimiento:").append(t.getFechaDeNacimiento()).append("->").append(newFecha);
+                            if (descBuilder.length() > 0) descBuilder.append("|");
+                            descBuilder.append("FechaNacimiento:").append(t.getFechaDeNacimiento()).append("->").append(newFecha);
                             t.setFechaDeNacimiento(newFecha);
                         }
                         break;
@@ -357,8 +354,8 @@ public class Tripulante {
                 }
 
                 escribirEnJsonSinLock(tripulantes);
-                if (desc.length() > 0) {
-                    ad.registrarLog(usuarioIDLogueado, 9, 2, tripulanteID, desc.toString());
+                if (descBuilder.length() > 0) {
+                    desc = descBuilder.toString();
                 }
             } finally {
                 tripulanteLock.terminarEscritura();
@@ -369,9 +366,13 @@ public class Tripulante {
         } catch (IOException e) {
             System.err.println("Error al modificar tripulante: " + e.getMessage());
         }
+        if (desc != null) {
+            ad.registrarLog(usuarioIDLogueado, 9, 2, tripulanteID, desc);
+        }
     }
 
     static void baja(int usuarioIDLogueado, int tripulanteID, AccesoDatos ad) {
+        String desc = null;
         try {
             tripulanteLock.iniciarEscritura();
             try {
@@ -385,8 +386,7 @@ public class Tripulante {
                         t.retirar();
                         String estadoActual = obtenerNombreEstadoPorId(t.getEstadoTID());
                         escribirEnJsonSinLock(tripulantes);
-                        String desc = "Estado:" + estadoAnterior + "->" + estadoActual;
-                        ad.registrarLog(usuarioIDLogueado, 10, 2, tripulanteID, desc);
+                        desc = "Estado:" + estadoAnterior + "->" + estadoActual;
                         return;
                     }
                 }
@@ -400,6 +400,9 @@ public class Tripulante {
             System.err.println("Operacion interrumpida al dar de baja tripulante: " + e.getMessage());
         } catch (IOException e) {
             System.err.println("Error al dar de baja tripulante: " + e.getMessage());
+        }
+        if (desc != null) {
+            ad.registrarLog(usuarioIDLogueado, 10, 2, tripulanteID, desc);
         }
     }
 
@@ -501,6 +504,7 @@ public class Tripulante {
     }
 
     static void registrarCapacidad(int usuarioIDLogueado, int tripulanteID, int aptitudID, int calificacion, String fecha, AccesoDatos ad) {
+        String desc = null;
         try {
             tripulanteLock.iniciarEscritura();
             try {
@@ -527,11 +531,10 @@ public class Tripulante {
 
                 String nombreAptitud = obtenerNombreAptitudPorId(aptitudID);
                 String nombreTripulante = obtenerNombreCompletoPorId(tripulanteID);
-                String desc = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
+                desc = "Aptitud=" + (nombreAptitud != null ? nombreAptitud : aptitudID)
                         + "|Tripulante=" + (nombreTripulante != null ? nombreTripulante : tripulanteID)
                         + "|Calificacion=" + calificacion
                         + "|Fecha=" + (fecha != null ? fecha : "");
-                ad.registrarLog(usuarioIDLogueado, 11, 2, tripulanteID, desc);
             } finally {
                 tripulanteLock.terminarEscritura();
             }
@@ -540,6 +543,9 @@ public class Tripulante {
             System.err.println("Operacion interrumpida al registrar capacidad: " + e.getMessage());
         } catch (IOException e) {
             System.err.println("Error al registrar capacidad: " + e.getMessage());
+        }
+        if (desc != null) {
+            ad.registrarLog(usuarioIDLogueado, 11, 2, tripulanteID, desc);
         }
     }
 

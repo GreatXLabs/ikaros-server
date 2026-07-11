@@ -115,9 +115,7 @@ public class Mision {
         Path ruta = Path.of(Configuracion.getDataDir(), "Misiones.json");
         Path tmp = Files.createTempFile(ruta.getParent(), "Misiones", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), misiones);
-        Files.move(tmp, ruta,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
+        Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
     }
 
     static List<EstadoMision> leerEstadosDesdeJson() {
@@ -152,9 +150,7 @@ public class Mision {
         Path ruta = Path.of(Configuracion.getDataDir(), "GrupoMisiones.json");
         Path tmp = Files.createTempFile(ruta.getParent(), "GrupoMisiones", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), grupos);
-        Files.move(tmp, ruta,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
+        Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
     }
 
     // --- Lookups ---

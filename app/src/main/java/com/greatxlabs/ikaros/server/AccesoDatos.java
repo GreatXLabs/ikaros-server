@@ -149,9 +149,7 @@ public class AccesoDatos {
         Path ruta = Path.of(Configuracion.getDataDir(), "Usuarios.json");
         Path tmp  = Files.createTempFile(ruta.getParent(), "Usuarios", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), usuarios);
-        Files.move(tmp, ruta,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
+        Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
     }
 
     private List<RolJson> leerRolesDesdeJson() {
@@ -196,9 +194,7 @@ public class AccesoDatos {
         Path ruta = Path.of(Configuracion.getDataDir(), "Eventos.json");
         Path tmp = Files.createTempFile(ruta.getParent(), "Eventos", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), eventos);
-        Files.move(tmp, ruta,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
+        Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
     }
 
     private List<EstadoEvento> leerEstadosEventoDesdeJson() {
@@ -253,9 +249,7 @@ public class AccesoDatos {
         Path ruta = Path.of(Configuracion.getDataDir(), "Registros.json");
         Path tmp = Files.createTempFile(ruta.getParent(), "Registros", ".tmp");
         mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), registros);
-        Files.move(tmp, ruta,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
+        Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
     }
 
     private String obtenerNombreAccionPorId(int accionID) {
