@@ -4,6 +4,8 @@ import java.sql.*;
 
 public class Protocolo {
 
+	private static final Object lockConcurrencia = new Object();
+
 	private static class ErrorProtocolo extends RuntimeException {
 		final String respuesta;
 		ErrorProtocolo(String respuesta) { super(respuesta); this.respuesta = respuesta; }
@@ -18,9 +20,17 @@ public class Protocolo {
 	}
 
 	public String procesar(String solicitud) {
-		String resultado = procesarInterno(solicitud);
-		LogSistema.registrar("RESULTADO " + resultado);
-		return resultado;
+		synchronized (lockConcurrencia) {
+			try {
+				Thread.sleep(2000);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return "ERROR|E99|Interrupcion en el servidor";
+			}
+			String resultado = procesarInterno(solicitud);
+			LogSistema.registrar("RESULTADO " + resultado);
+			return resultado;
+		}
 	}
 
 	private String procesarInterno(String solicitud) {

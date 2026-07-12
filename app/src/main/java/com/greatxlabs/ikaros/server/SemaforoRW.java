@@ -12,7 +12,6 @@ public class SemaforoRW {
     public void iniciarLectura() throws InterruptedException {
         turno.acquire();
         mutex.acquire();
-        Thread.sleep(1500);
         lectoresActivos++;
         if (lectoresActivos == 1) {
             try {
@@ -40,7 +39,6 @@ public class SemaforoRW {
     public void iniciarEscritura() throws InterruptedException {
         turno.acquire();
         recurso.acquire();
-        Thread.sleep(1500);
     }
 
     public void terminarEscritura() {
