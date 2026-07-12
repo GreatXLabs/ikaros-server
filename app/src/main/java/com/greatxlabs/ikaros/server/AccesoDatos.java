@@ -367,10 +367,6 @@ public class AccesoDatos {
         return Usuario.obtenerDatosUsuarioParaLogin(usuario);
     }
 
-    public int obtenerUsuarioID(String usuario) {
-        return Usuario.obtenerUsuarioID(usuario);
-    }
-
     public boolean isUsuarioInactivo(int id) {
         return Usuario.isUsuarioInactivo(id);
     }
