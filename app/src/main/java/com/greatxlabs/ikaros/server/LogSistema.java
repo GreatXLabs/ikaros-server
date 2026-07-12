@@ -20,7 +20,6 @@ public class LogSistema {
     public static void registrar(String mensaje) {
         try {
             mutex.acquire();
-            Thread.sleep(2500);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return;
