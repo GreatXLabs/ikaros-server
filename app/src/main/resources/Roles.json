@@ -1,0 +1,22 @@
+[
+  {
+    "RolID": 1,
+    "Rol": "Jefe"
+  },
+  {
+    "RolID": 2,
+    "Rol": "RRHH"
+  },
+  {
+    "RolID": 3,
+    "Rol": "Asignador"
+  },
+  {
+    "RolID": 4,
+    "Rol": "Coordinador"
+  },
+  {
+    "RolID": 5,
+    "Rol": "Registrador"
+  }
+]

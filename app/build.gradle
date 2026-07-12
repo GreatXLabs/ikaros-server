@@ -24,9 +24,13 @@ dependencies {
 
     // This dependency is used by the application.
     implementation libs.guava
-    
-    // MariaDB JDBC driver
-    implementation libs.mariadb.java.client
+
+    // Carga de variables de entorno desde .env
+    implementation libs.dotenv.java
+    // Jackson for JSON processing
+    implementation libs.jackson
+    // BCrypt for password hashing
+    implementation libs.bcrypt
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

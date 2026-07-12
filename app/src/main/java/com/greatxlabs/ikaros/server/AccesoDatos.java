@@ -1,317 +1,522 @@
 package com.greatxlabs.ikaros.server;
 
-import java.sql.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-/**
- * Capa de acceso a datos. Todas las operaciones van por stored procedures.
- *
- * Patron de nombres de SP:
- *   A = Alta (registrar)   — ej: AUsuario, AMision, AEvento
- *   M = Modificacion       — ej: MUsuario, MMision
- *   B = Baja (logica)      — ej: BUsuario, BEvento
- *   + Consultas/Listas     — ej: ConsultarUsuario, ListarMisiones
- *
- * Todos los metodos obtienen conexion via ConexionBD.getConexion().
- * Los metodos que devuelven ResultSet no cierran el CallableStatement
- * internamente — queda a cargo del caller al cerrar el ResultSet.
- */
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.sql.Array;
+import java.sql.Blob;
+import java.sql.Clob;
+import java.sql.NClob;
+import java.sql.Ref;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.RowId;
+import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.sql.SQLXML;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+
 public class AccesoDatos {
 
-	// --- AUTENTICACIÓN Y SESIÓN ---
-	public boolean validarLogin(String usuario, String clave) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{? = CALL ValidarLogin(?, ?)}");
-		cs.registerOutParameter(1, java.sql.Types.BOOLEAN);
-		cs.setString(2, usuario);
-		cs.setString(3, clave);
-		cs.execute();
-		return cs.getBoolean(1);
-	}
+    private static final ObjectMapper mapper = new ObjectMapper();
 
-	public ResultSet obtenerDatosUsuario(String usuario) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
-		cs.setString(1, usuario);
-		return cs.executeQuery();
-	}
+    private static void asegurarArchivo(String nombre) throws IOException {
+        Path destino = Path.of(Configuracion.getDataDir(), nombre);
+        if (Files.exists(destino)) {
+            if (!"Usuarios.json".equals(nombre) || !tienePasswordsEnTextoPlano(destino)) return;
+            System.out.println("Seed desactualizado detectado, sobrescribiendo: " + destino);
+        }
+        Files.createDirectories(destino.getParent());
+        try (InputStream is = AccesoDatos.class.getClassLoader().getResourceAsStream(nombre)) {
+            if (is == null) throw new IOException("Recurso semilla no encontrado: " + nombre);
+            Files.copy(is, destino, StandardCopyOption.REPLACE_EXISTING);
+        }
+        System.out.println("Archivo sembrado: " + destino);
+    }
 
+    private static boolean tienePasswordsEnTextoPlano(Path ruta) {
+        try {
+            List<java.util.Map<String, Object>> usuarios = mapper.readValue(ruta.toFile(), new TypeReference<List<java.util.Map<String, Object>>>() {});
+            for (java.util.Map<String, Object> u : usuarios) {
+                Object clave = u.get("Clave");
+                if (clave instanceof String s && (s.length() < 50 || !s.startsWith("$2"))) return true;
+            }
+        } catch (Exception e) {
+            return true;
+        }
+        return false;
+    }
 
-	// --- ROLES ---
-	public ResultSet consultarRoles() throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ConsultarRoles()}");
-		return cs.executeQuery();
-	}
+    static {
+        try {
+            asegurarArchivo("Usuarios.json");
+            asegurarArchivo("Roles.json");
+            asegurarArchivo("EstadosUsuarios.json");
+            asegurarArchivo("Tripulantes.json");
+            asegurarArchivo("Capacidades.json");
+            asegurarArchivo("Aptitudes.json");
+            asegurarArchivo("EstadosTripulantes.json");
+            asegurarArchivo("Sexos.json");
+            asegurarArchivo("Misiones.json");
+            asegurarArchivo("EstadosMisiones.json");
+            asegurarArchivo("GrupoMisiones.json");
+            asegurarArchivo("Eventos.json");
+            asegurarArchivo("EstadosEventos.json");
+            asegurarArchivo("Acciones.json");
+            asegurarArchivo("Entidades.json");
+            asegurarArchivo("Registros.json");
+        } catch (IOException e) {
+            System.err.println("Error inicializando archivos de datos: " + e.getMessage());
+        }
+    }
 
-	public ResultSet consultarAptitudes() throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ListarAptitudes()}");
-		return cs.executeQuery();
-	}
+    private String obtenerNombreMisionPorId(int misionID) {
+        return Mision.obtenerNombrePorId(misionID);
+    }
 
-	public ResultSet listarEstadosMision() throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ListarEstadosMisiones()}");
-		return cs.executeQuery();
-	}
+    static class SimpleResultSet implements ResultSet {
 
-	public ResultSet listarEstadosTripulante() throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ListarEstadosTripulantes()}");
-		return cs.executeQuery();
-	}
+        private final List<String[]> filas;
+        private final int columnas;
+        private int indiceActual = -1;
 
-	public ResultSet listarEstadosEvento() throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ListarEstadosEventos()}");
-		return cs.executeQuery();
-	}
+        SimpleResultSet(List<String[]> filas, int columnas) {
+            this.filas = filas;
+            this.columnas = columnas;
+        }
 
-	// --- REGISTROS (LOGS) ---
-	public void registrarLog(int usuarioID, int accionID, int tipoEntidadID, int entidadID) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ARegistro(?, ?, ?, ?, ?)}");
-		cs.setInt(1, usuarioID);
-		cs.setInt(2, accionID);
-		cs.setInt(3, tipoEntidadID);
-		cs.setInt(4, entidadID);
-		cs.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
-		cs.execute();
-	}
+        @Override
+        public boolean next() throws SQLException {
+            indiceActual++;
+            return indiceActual < filas.size();
+        }
 
-	public int obtenerUsuarioID(String usuario) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
-		cs.setString(1, usuario);
-		ResultSet rs = cs.executeQuery();
-		if (rs.next()) return rs.getInt("UsuarioID");
-		throw new SQLException("Usuario no encontrado: " + usuario);
-	}
+        @Override
+        public void close() throws SQLException {}
 
-	// --- USUARIOS ---
-	public void registrarUsuario(int rolID, String usuario, String nombre, String apellido, String clave) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL AUsuario(?, ?, ?, ?, ?)}");
-		cs.setInt(1, rolID);
-		cs.setString(2, usuario);
-		cs.setString(3, nombre);
-		cs.setString(4, apellido);
-		cs.setString(5, clave);
-		cs.execute();
-	}
+        @Override
+        public boolean wasNull() throws SQLException { return false; }
 
-	public void modificarUsuario(int usuarioID, int rolID, String usuario, String nombre, String apellido, String clave) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL MUsuario(?, ?, ?, ?, ?, ?)}");
-		cs.setInt(1, usuarioID);
-		cs.setInt(2, rolID);
-		cs.setString(3, usuario);
-		cs.setString(4, nombre);
-		cs.setString(5, apellido);
-		cs.setString(6, clave);
-		cs.execute();
-	}
+        @Override
+        public String getString(int i) throws SQLException {
+            if (i < 1 || i > columnas || indiceActual < 0 || indiceActual >= filas.size()) return null;
+            return filas.get(indiceActual)[i - 1];
+        }
 
-	public void bajaUsuario(String nombreUsuario) throws SQLException {
-		int usuarioID = obtenerUsuarioID(nombreUsuario);
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL BUsuario(?)}");
-		cs.setInt(1, usuarioID);
-		cs.execute();
-	}
+        @Override
+        public int getInt(int i) throws SQLException {
+            String v = getString(i);
+            return v == null ? 0 : Integer.parseInt(v);
+        }
 
-	public ResultSet listarUsuarios() throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ListarUsuarios()}");
-		return cs.executeQuery();
-	}
+        @Override
+        public boolean getBoolean(int i) throws SQLException { return false; }
+        @Override public byte getByte(int i) throws SQLException { return 0; }
+        @Override public short getShort(int i) throws SQLException { return 0; }
+        @Override public long getLong(int i) throws SQLException { return 0; }
+        @Override public float getFloat(int i) throws SQLException { return 0; }
+        @Override public double getDouble(int i) throws SQLException { return 0; }
+        @Override public java.math.BigDecimal getBigDecimal(int i, int scale) throws SQLException { return null; }
+        @Override public java.math.BigDecimal getBigDecimal(int i) throws SQLException { return null; }
+        @Override public byte[] getBytes(int i) throws SQLException { return null; }
+        @Override public java.sql.Date getDate(int i) throws SQLException { return null; }
+        @Override public java.sql.Time getTime(int i) throws SQLException { return null; }
+        @Override public Timestamp getTimestamp(int i) throws SQLException { return null; }
+        @Override public InputStream getAsciiStream(int i) throws SQLException { return null; }
+        @Override public InputStream getUnicodeStream(int i) throws SQLException { return null; }
+        @Override public InputStream getBinaryStream(int i) throws SQLException { return null; }
 
-	public String obtenerClaveUsuario(String usuario) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ConsultarUsuario(?)}");
-		cs.setString(1, usuario);
-		ResultSet rs = cs.executeQuery();
-		if (rs.next()) return rs.getString("Clave");
-		return "";
-	}
+        @Override public String getString(String c) throws SQLException { return null; }
+        @Override public boolean getBoolean(String c) throws SQLException { return false; }
+        @Override public byte getByte(String c) throws SQLException { return 0; }
+        @Override public short getShort(String c) throws SQLException { return 0; }
+        @Override public int getInt(String c) throws SQLException { return 0; }
+        @Override public long getLong(String c) throws SQLException { return 0; }
+        @Override public float getFloat(String c) throws SQLException { return 0; }
+        @Override public double getDouble(String c) throws SQLException { return 0; }
+        @Override public java.math.BigDecimal getBigDecimal(String c, int scale) throws SQLException { return null; }
+        @Override public java.math.BigDecimal getBigDecimal(String c) throws SQLException { return null; }
+        @Override public byte[] getBytes(String c) throws SQLException { return null; }
+        @Override public java.sql.Date getDate(String c) throws SQLException { return null; }
+        @Override public java.sql.Time getTime(String c) throws SQLException { return null; }
+        @Override public Timestamp getTimestamp(String c) throws SQLException { return null; }
+        @Override public InputStream getAsciiStream(String c) throws SQLException { return null; }
+        @Override public InputStream getUnicodeStream(String c) throws SQLException { return null; }
+        @Override public InputStream getBinaryStream(String c) throws SQLException { return null; }
 
-	// --- MISIONES ---
-	public void registrarMision(int estadoMID, String nombre, String descripcion, Timestamp ini, Timestamp fin) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL AMision(?, ?, ?, ?, ?)}");
-		cs.setInt(1, estadoMID);
-		cs.setString(2, nombre);
-		cs.setString(3, descripcion);
-		cs.setTimestamp(4, ini);
-		cs.setTimestamp(5, fin);
-		cs.execute();
-	}
+        @Override public SQLWarning getWarnings() throws SQLException { return null; }
+        @Override public void clearWarnings() throws SQLException {}
+        @Override public String getCursorName() throws SQLException { return null; }
+        @Override public ResultSetMetaData getMetaData() throws SQLException { return null; }
+        @Override public Object getObject(int i) throws SQLException { return getString(i); }
+        @Override public Object getObject(String c) throws SQLException { return null; }
+        @Override public int findColumn(String c) throws SQLException { return 0; }
+        @Override public Reader getCharacterStream(int i) throws SQLException { return null; }
+        @Override public Reader getCharacterStream(String c) throws SQLException { return null; }
+        @Override public boolean isBeforeFirst() throws SQLException { return false; }
+        @Override public boolean isAfterLast() throws SQLException { return false; }
+        @Override public boolean isFirst() throws SQLException { return false; }
+        @Override public boolean isLast() throws SQLException { return false; }
+        @Override public void beforeFirst() throws SQLException {}
+        @Override public void afterLast() throws SQLException {}
+        @Override public boolean first() throws SQLException { return false; }
+        @Override public boolean last() throws SQLException { return false; }
+        @Override public int getRow() throws SQLException { return indiceActual + 1; }
+        @Override public boolean absolute(int row) throws SQLException { return false; }
+        @Override public boolean relative(int rows) throws SQLException { return false; }
+        @Override public boolean previous() throws SQLException { return false; }
+        @Override public void setFetchDirection(int d) throws SQLException {}
+        @Override public int getFetchDirection() throws SQLException { return FETCH_FORWARD; }
+        @Override public void setFetchSize(int rows) throws SQLException {}
+        @Override public int getFetchSize() throws SQLException { return 0; }
+        @Override public int getType() throws SQLException { return TYPE_FORWARD_ONLY; }
+        @Override public int getConcurrency() throws SQLException { return CONCUR_READ_ONLY; }
+        @Override public boolean rowUpdated() throws SQLException { return false; }
+        @Override public boolean rowInserted() throws SQLException { return false; }
+        @Override public boolean rowDeleted() throws SQLException { return false; }
+        @Override public void updateNull(int i) throws SQLException {}
+        @Override public void updateBoolean(int i, boolean x) throws SQLException {}
+        @Override public void updateByte(int i, byte x) throws SQLException {}
+        @Override public void updateShort(int i, short x) throws SQLException {}
+        @Override public void updateInt(int i, int x) throws SQLException {}
+        @Override public void updateLong(int i, long x) throws SQLException {}
+        @Override public void updateFloat(int i, float x) throws SQLException {}
+        @Override public void updateDouble(int i, double x) throws SQLException {}
+        @Override public void updateBigDecimal(int i, java.math.BigDecimal x) throws SQLException {}
+        @Override public void updateString(int i, String x) throws SQLException {}
+        @Override public void updateBytes(int i, byte[] x) throws SQLException {}
+        @Override public void updateDate(int i, java.sql.Date x) throws SQLException {}
+        @Override public void updateTime(int i, java.sql.Time x) throws SQLException {}
+        @Override public void updateTimestamp(int i, Timestamp x) throws SQLException {}
+        @Override public void updateAsciiStream(int i, InputStream x, int l) throws SQLException {}
+        @Override public void updateBinaryStream(int i, InputStream x, int l) throws SQLException {}
+        @Override public void updateCharacterStream(int i, Reader x, int l) throws SQLException {}
+        @Override public void updateObject(int i, Object x, int s) throws SQLException {}
+        @Override public void updateObject(int i, Object x) throws SQLException {}
+        @Override public void updateNull(String c) throws SQLException {}
+        @Override public void updateBoolean(String c, boolean x) throws SQLException {}
+        @Override public void updateByte(String c, byte x) throws SQLException {}
+        @Override public void updateShort(String c, short x) throws SQLException {}
+        @Override public void updateInt(String c, int x) throws SQLException {}
+        @Override public void updateLong(String c, long x) throws SQLException {}
+        @Override public void updateFloat(String c, float x) throws SQLException {}
+        @Override public void updateDouble(String c, double x) throws SQLException {}
+        @Override public void updateBigDecimal(String c, java.math.BigDecimal x) throws SQLException {}
+        @Override public void updateString(String c, String x) throws SQLException {}
+        @Override public void updateBytes(String c, byte[] x) throws SQLException {}
+        @Override public void updateDate(String c, java.sql.Date x) throws SQLException {}
+        @Override public void updateTime(String c, java.sql.Time x) throws SQLException {}
+        @Override public void updateTimestamp(String c, Timestamp x) throws SQLException {}
+        @Override public void updateAsciiStream(String c, InputStream x, int l) throws SQLException {}
+        @Override public void updateBinaryStream(String c, InputStream x, int l) throws SQLException {}
+        @Override public void updateCharacterStream(String c, Reader x, int l) throws SQLException {}
+        @Override public void updateObject(String c, Object x, int s) throws SQLException {}
+        @Override public void updateObject(String c, Object x) throws SQLException {}
+        @Override public void insertRow() throws SQLException {}
+        @Override public void updateRow() throws SQLException {}
+        @Override public void deleteRow() throws SQLException {}
+        @Override public void refreshRow() throws SQLException {}
+        @Override public void cancelRowUpdates() throws SQLException {}
+        @Override public void moveToInsertRow() throws SQLException {}
+        @Override public void moveToCurrentRow() throws SQLException {}
+        @Override public Statement getStatement() throws SQLException { return null; }
+        @Override public Object getObject(int i, Map<String, Class<?>> m) throws SQLException { return null; }
+        @Override public Ref getRef(int i) throws SQLException { return null; }
+        @Override public Blob getBlob(int i) throws SQLException { return null; }
+        @Override public Clob getClob(int i) throws SQLException { return null; }
+        @Override public Array getArray(int i) throws SQLException { return null; }
+        @Override public Object getObject(String c, Map<String, Class<?>> m) throws SQLException { return null; }
+        @Override public Ref getRef(String c) throws SQLException { return null; }
+        @Override public Blob getBlob(String c) throws SQLException { return null; }
+        @Override public Clob getClob(String c) throws SQLException { return null; }
+        @Override public Array getArray(String c) throws SQLException { return null; }
+        @Override public java.sql.Date getDate(int i, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public java.sql.Date getDate(String c, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public java.sql.Time getTime(int i, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public java.sql.Time getTime(String c, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public Timestamp getTimestamp(int i, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public Timestamp getTimestamp(String c, java.util.Calendar cal) throws SQLException { return null; }
+        @Override public java.net.URL getURL(int i) throws SQLException { return null; }
+        @Override public java.net.URL getURL(String c) throws SQLException { return null; }
+        @Override public void updateRef(int i, Ref x) throws SQLException {}
+        @Override public void updateRef(String c, Ref x) throws SQLException {}
+        @Override public void updateBlob(int i, Blob x) throws SQLException {}
+        @Override public void updateBlob(String c, Blob x) throws SQLException {}
+        @Override public void updateClob(int i, Clob x) throws SQLException {}
+        @Override public void updateClob(String c, Clob x) throws SQLException {}
+        @Override public void updateArray(int i, Array x) throws SQLException {}
+        @Override public void updateArray(String c, Array x) throws SQLException {}
+        @Override public RowId getRowId(int i) throws SQLException { return null; }
+        @Override public RowId getRowId(String c) throws SQLException { return null; }
+        @Override public void updateRowId(int i, RowId x) throws SQLException {}
+        @Override public void updateRowId(String c, RowId x) throws SQLException {}
+        @Override public int getHoldability() throws SQLException { return HOLD_CURSORS_OVER_COMMIT; }
+        @Override public boolean isClosed() throws SQLException { return false; }
+        @Override public void updateNString(int i, String x) throws SQLException {}
+        @Override public void updateNString(String c, String x) throws SQLException {}
+        @Override public void updateNClob(int i, NClob x) throws SQLException {}
+        @Override public void updateNClob(String c, NClob x) throws SQLException {}
+        @Override public NClob getNClob(int i) throws SQLException { return null; }
+        @Override public NClob getNClob(String c) throws SQLException { return null; }
+        @Override public SQLXML getSQLXML(int i) throws SQLException { return null; }
+        @Override public SQLXML getSQLXML(String c) throws SQLException { return null; }
+        @Override public void updateSQLXML(int i, SQLXML x) throws SQLException {}
+        @Override public void updateSQLXML(String c, SQLXML x) throws SQLException {}
+        @Override public String getNString(int i) throws SQLException { return null; }
+        @Override public String getNString(String c) throws SQLException { return null; }
+        @Override public Reader getNCharacterStream(int i) throws SQLException { return null; }
+        @Override public Reader getNCharacterStream(String c) throws SQLException { return null; }
+        @Override public void updateNCharacterStream(int i, Reader x, long l) throws SQLException {}
+        @Override public void updateNCharacterStream(String c, Reader x, long l) throws SQLException {}
+        @Override public void updateAsciiStream(int i, InputStream x, long l) throws SQLException {}
+        @Override public void updateBinaryStream(int i, InputStream x, long l) throws SQLException {}
+        @Override public void updateCharacterStream(int i, Reader x, long l) throws SQLException {}
+        @Override public void updateAsciiStream(String c, InputStream x, long l) throws SQLException {}
+        @Override public void updateBinaryStream(String c, InputStream x, long l) throws SQLException {}
+        @Override public void updateCharacterStream(String c, Reader x, long l) throws SQLException {}
+        @Override public void updateBlob(int i, InputStream x, long l) throws SQLException {}
+        @Override public void updateBlob(String c, InputStream x, long l) throws SQLException {}
+        @Override public void updateClob(int i, Reader x, long l) throws SQLException {}
+        @Override public void updateClob(String c, Reader x, long l) throws SQLException {}
+        @Override public void updateNClob(int i, Reader x, long l) throws SQLException {}
+        @Override public void updateNClob(String c, Reader x, long l) throws SQLException {}
+        @Override public void updateNCharacterStream(int i, Reader x) throws SQLException {}
+        @Override public void updateNCharacterStream(String c, Reader x) throws SQLException {}
+        @Override public void updateAsciiStream(int i, InputStream x) throws SQLException {}
+        @Override public void updateBinaryStream(int i, InputStream x) throws SQLException {}
+        @Override public void updateCharacterStream(int i, Reader x) throws SQLException {}
+        @Override public void updateAsciiStream(String c, InputStream x) throws SQLException {}
+        @Override public void updateBinaryStream(String c, InputStream x) throws SQLException {}
+        @Override public void updateCharacterStream(String c, Reader x) throws SQLException {}
+        @Override public void updateBlob(int i, InputStream x) throws SQLException {}
+        @Override public void updateBlob(String c, InputStream x) throws SQLException {}
+        @Override public void updateClob(int i, Reader x) throws SQLException {}
+        @Override public void updateClob(String c, Reader x) throws SQLException {}
+        @Override public void updateNClob(int i, Reader x) throws SQLException {}
+        @Override public void updateNClob(String c, Reader x) throws SQLException {}
+        @Override public <T> T getObject(int i, Class<T> t) throws SQLException { return null; }
+        @Override public <T> T getObject(String c, Class<T> t) throws SQLException { return null; }
+        @Override public boolean isWrapperFor(Class<?> iface) throws SQLException { return false; }
+        @Override public <T> T unwrap(Class<T> iface) throws SQLException { return null; }
+    }
 
-	public void modificarMision(int id, String nombre, String desc, Timestamp ini, Timestamp fin) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL MMision(?, ?, ?, ?, ?)}");
-		cs.setInt(1, id);
-		cs.setString(2, nombre);
-		cs.setString(3, desc);
-		cs.setTimestamp(4, ini);
-		cs.setTimestamp(5, fin);
-		cs.execute();
-	}
+    public ResultSet consultarRoles() {
+        return Usuario.consultarRoles();
+    }
 
-	public void actualizarEstadoMision(int id, int estadoID, Integer retrasoInicio, Integer retrasoFin) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ActualizarEstadoMision(?, ?, ?, ?)}");
-		cs.setInt(1, id);
-		cs.setInt(2, estadoID);
-		if (retrasoInicio != null) cs.setInt(3, retrasoInicio); else cs.setNull(3, java.sql.Types.INTEGER);
-		if (retrasoFin != null) cs.setInt(4, retrasoFin); else cs.setNull(4, java.sql.Types.INTEGER);
-		cs.execute();
-	}
+    public ResultSet consultarAptitudes() {
+        return Capacidad.consultarAptitudes();
+    }
 
-	public ResultSet listarMisiones() throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ListarMisiones()}");
-		return cs.executeQuery();
-	}
+    public ResultSet listarEstadosMision() throws SQLException {
+        return Mision.listarEstados();
+    }
 
-	public ResultSet consultarMision(int id) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ConsultarMision(?)}");
-		cs.setInt(1, id);
-		return cs.executeQuery();
-	}
+    public ResultSet listarEstadosTripulante() {
+        return Tripulante.listarEstados();
+    }
 
-	// --- TRIPULANTES ---
-	public ResultSet registrarTripulante(int estadoTID, int sexoID, int peso, int altura, String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ATripulante(?, ?, ?, ?, ?, ?, ?, ?)}");
-		cs.setInt(1, estadoTID);
-		cs.setInt(2, sexoID);
-		cs.setInt(3, peso);
-		cs.setInt(4, altura);
-		cs.setString(5, nombre);
-		cs.setString(6, apellido);
-		cs.setString(7, imagen);
-		cs.setDate(8, fechaNacimiento);
-		return cs.executeQuery();
-	}
+    public ResultSet listarEstadosEvento() throws SQLException {
+        return Evento.listarEstados();
+    }
 
-	public void modificarTripulante(int tripulanteID, int estadoTID, int sexoID, int peso, int altura, String nombre, String apellido, String imagen, Date fechaNacimiento) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL MTripulante(?, ?, ?, ?, ?, ?, ?, ?, ?)}");
-		cs.setInt(1, tripulanteID);
-		cs.setInt(2, estadoTID);
-		cs.setInt(3, sexoID);
-		cs.setInt(4, peso);
-		cs.setInt(5, altura);
-		cs.setString(6, nombre);
-		cs.setString(7, apellido);
-		cs.setString(8, imagen);
-		cs.setDate(9, fechaNacimiento);
-		cs.execute();
-	}
+    public void registrarLog(int usuarioID, int accionID, int tipoEntidadID, int entidadID, String descripcion) {
+        Registro.registrarLog(usuarioID, accionID, tipoEntidadID, entidadID, descripcion);
+    }
 
-	public void bajaTripulante(int tripulanteID) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL BTripulante(?)}");
-		cs.setInt(1, tripulanteID);
-		cs.execute();
-	}
+    public int registrarUsuario(int rolID, String usuario, String nombre, String apellido, String clave) {
+        return Usuario.registrarUsuario(rolID, usuario, nombre, apellido, clave);
+    }
 
-	public void asignarTripulante(int tripID, int misID, Timestamp fecha) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL AGrupoMision(?, ?, ?)}");
-		cs.setInt(1, tripID);
-		cs.setInt(2, misID);
-		cs.setTimestamp(3, fecha);
-		cs.execute();
-	}
+    public void modificarUsuario(int usuarioIDLogueado, int usuarioID, int rolID, String usuario, String nombre, String apellido, String clave) {
+        Usuario.modificarUsuario(usuarioIDLogueado, usuarioID, rolID, usuario, nombre, apellido, clave);
+    }
 
-	// TODO: pierde la referencia al CallableStatement — ver issue #7
-	public ResultSet listarTripulantes() throws SQLException {
-		return ConexionBD.getConexion().prepareCall("{CALL ListarTripulantes()}").executeQuery();
-	}
+    public void bajaUsuario(int usuarioIDLogueado, int usuarioID) {
+        Usuario.baja(usuarioIDLogueado, usuarioID);
+    }
 
-	public ResultSet listarTripulantesMision(int misionID) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ListarTripulantesMision(?)}");
-		cs.setInt(1, misionID);
-		return cs.executeQuery();
-	}
+    public void bajaUsuario(int usuarioIDLogueado, String usuarioOID) {
+        Usuario.baja(usuarioIDLogueado, usuarioOID);
+    }
 
-	public ResultSet listarMisionesTripulante(int tripulanteID) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ListarMisionesTripulante(?)}");
-		cs.setInt(1, tripulanteID);
-		return cs.executeQuery();
-	}
+    public ResultSet listarUsuarios() throws SQLException {
+        return Usuario.listar();
+    }
 
-	public ResultSet consultarTripulante(int tripulanteID) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ConsultarTripulante(?)}");
-		cs.setInt(1, tripulanteID);
-		return cs.executeQuery();
-	}
+    public boolean validarLogin(String usuario, String clave) {
+        return Usuario.validarLogin(usuario, clave);
+    }
 
-	public ResultSet consultarCapacidades(int tripulanteID) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ConsultarCapacidades(?)}");
-		cs.setInt(1, tripulanteID);
-		return cs.executeQuery();
-	}
+    public Usuario.UsuarioLoginResult obtenerDatosUsuarioParaLogin(String usuario) {
+        return Usuario.obtenerDatosUsuarioParaLogin(usuario);
+    }
 
-	public void registrarCapacidad(int tripulanteID, int aptitudID, int calificacion, String fecha) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL RegistrarCapacidad(?, ?, ?, ?)}");
-		cs.setInt(1, tripulanteID);
-		cs.setInt(2, aptitudID);
-		cs.setInt(3, calificacion);
-		cs.setString(4, fecha);
-		cs.execute();
-	}
+    public boolean isUsuarioInactivo(int id) {
+        return Usuario.isUsuarioInactivo(id);
+    }
 
-	public void eliminarCapacidades(int tripulanteID) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL EliminarCapacidades(?)}");
-		cs.setInt(1, tripulanteID);
-		cs.execute();
-	}
+    public Map<String, Integer> obtenerRolesComoMapa() {
+        return Usuario.obtenerRolesComoMapa();
+    }
 
-	// --- EVENTOS Y LOGS ---
-	public void registrarEvento(int misionID, String titulo, String desc, Timestamp fecha) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL AEvento(?, ?, ?, ?)}");
-		cs.setInt(1, misionID);
-		cs.setString(2, titulo);
-		cs.setString(3, desc);
-		cs.setTimestamp(4, fecha);
-		cs.execute();
-	}
+    public int registrarMision(int estadoMID, String nombre, String descripcion, Timestamp ini, Timestamp fin) {
+        return Mision.registrar(estadoMID, nombre, descripcion, ini, fin);
+    }
 
-	public void bajaEvento(int eventoID) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL BEvento(?, ?)}");
-		cs.setInt(1, eventoID);
-		cs.setInt(2, 2);
-		cs.execute();
-	}
+    public void modificarMision(int usuarioIDLogueado, int id, String nombre, String desc, Timestamp ini, Timestamp fin) {
+        Mision.modificar(usuarioIDLogueado, id, nombre, desc, ini, fin, this);
+    }
 
-	public ResultSet listarEventos() throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ListarEventos()}");
-		return cs.executeQuery();
-	}
+    public void actualizarEstadoMision(int usuarioIDLogueado, int id, int estadoID, Integer retrasoInicio, Integer retrasoFin) {
+        Mision.actualizarEstado(usuarioIDLogueado, id, estadoID, retrasoInicio, retrasoFin, this);
+    }
 
-	public ResultSet consultarEventos(int misionID) throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL ConsultarEventos(?)}");
-		cs.setInt(1, misionID);
-		return cs.executeQuery();
-	}
+    public ResultSet listarMisiones() throws SQLException {
+        return Mision.listar();
+    }
 
-	public ResultSet verLogs() throws SQLException {
-		Connection con = ConexionBD.getConexion();
-		CallableStatement cs = con.prepareCall("{CALL VerLogs()}");
-		return cs.executeQuery();
-	}
+    public ResultSet consultarMision(int id) throws SQLException {
+        return Mision.consultar(id);
+    }
+
+    public boolean existeMision(int id) throws SQLException {
+        return Mision.existe(id);
+    }
+
+    public ResultSet registrarTripulante(int estadoTID, int sexoID, int peso, int altura,
+            String nombre, String apellido, String imagen, Date fechaNacimiento) {
+        return Tripulante.registrar(estadoTID, sexoID, peso, altura, nombre, apellido, imagen, fechaNacimiento);
+    }
+
+    public void modificarTripulante(int usuarioIDLogueado, int tripulanteID, int estadoTID, int sexoID, int peso, int altura,
+            String nombre, String apellido, String imagen, Date fechaNacimiento) {
+        Tripulante.modificar(usuarioIDLogueado, tripulanteID, estadoTID, sexoID, peso, altura, nombre, apellido, imagen, fechaNacimiento, this);
+    }
+
+    public void bajaTripulante(int usuarioIDLogueado, int tripulanteID) {
+        Tripulante.baja(usuarioIDLogueado, tripulanteID, this);
+    }
+
+    public void asignarTripulante(int usuarioIDLogueado, int tripID, int misID, Timestamp fecha) {
+        Mision.asignarTripulante(usuarioIDLogueado, tripID, misID, fecha, this);
+    }
+
+    public ResultSet listarTripulantes() {
+        return Tripulante.listar();
+    }
+
+    public ResultSet listarTripulantesMision(int misionID) throws SQLException {
+        return Tripulante.listarMision(misionID);
+    }
+
+    public ResultSet listarMisionesTripulante(int tripulanteID) throws SQLException {
+        return Mision.listarMisionesTripulante(tripulanteID);
+    }
+
+    public ResultSet consultarTripulante(int tripulanteID) {
+        return Tripulante.consultar(tripulanteID);
+    }
+
+    public boolean existeTripulante(int id) {
+        return Tripulante.existe(id);
+    }
+
+    public boolean isTripulanteRetirado(int id) {
+        return Tripulante.estaRetirado(id);
+    }
+
+    public boolean isMisionTerminada(int id) {
+        return Mision.estaTerminada(id);
+    }
+
+    public ResultSet consultarCapacidades(int tripulanteID) {
+        return Capacidad.consultar(tripulanteID);
+    }
+
+    public void registrarCapacidad(int usuarioIDLogueado, int tripulanteID, int aptitudID, int calificacion, String fecha) {
+        Capacidad.registrar(usuarioIDLogueado, tripulanteID, aptitudID, calificacion, fecha, this);
+    }
+
+    public void eliminarCapacidades(int tripulanteID) {
+        Capacidad.eliminar(tripulanteID);
+    }
+
+    public int registrarEvento(int usuarioIDLogueado, int misionID, String titulo, String desc, Timestamp fecha) {
+        return Evento.registrar(usuarioIDLogueado, misionID, titulo, desc, fecha, this);
+    }
+
+    public void bajaEvento(int usuarioIDLogueado, int eventoID) {
+        Evento.baja(usuarioIDLogueado, eventoID, this);
+    }
+
+    public ResultSet listarEventos() throws SQLException {
+        return Evento.listar();
+    }
+
+    public ResultSet consultarEventos(int misionID) throws SQLException {
+        return Evento.consultarPorMision(misionID);
+    }
+
+    public Map<String, Integer> obtenerAptitudesComoMapa() {
+        return Capacidad.obtenerAptitudesComoMapa();
+    }
+
+    public Map<String, Integer> obtenerEstadosMisionComoMapa() {
+        return Mision.obtenerEstadosComoMapa();
+    }
+
+    public Map<String, Integer> obtenerEstadosTripulanteComoMapa() {
+        return Tripulante.obtenerEstadosComoMapa();
+    }
+
+    public Map<String, Integer> obtenerEstadosEventoComoMapa() {
+        return Evento.obtenerEstadosComoMapa();
+    }
+
+    public ResultSet verLogs() {
+        List<Registro> registros = Registro.leerDesdeJson();
+        List<Usuario> usuarios = Usuario.leerDesdeJson();
+        List<String[]> filas = new ArrayList<>();
+        for (Registro r : registros) {
+            String nombreUsuario = "";
+            String nombreRol = "";
+            for (Usuario u : usuarios) {
+                if (u.getUsuarioID() == r.getUsuarioID()) {
+                    nombreUsuario = u.getUsuario() != null ? u.getUsuario() : "";
+                    nombreRol = Usuario.obtenerNombreRolPorId(u.getRolID());
+                    break;
+                }
+            }
+            String nombreAccion = Registro.obtenerNombreAccionPorId(r.getAccionMID());
+            String nombreEntidad = Registro.obtenerNombreEntidadPorId(r.getTipoEntidadID());
+            filas.add(new String[]{
+                String.valueOf(r.getRegistroID()),
+                nombreUsuario,
+                nombreRol,
+                nombreAccion != null ? nombreAccion : "",
+                nombreEntidad != null ? nombreEntidad : "",
+                String.valueOf(r.getEntidadID()),
+                r.getFechaHora() != null ? r.getFechaHora() : "",
+                r.getDescripcion() != null ? r.getDescripcion() : ""
+            });
+        }
+        filas.sort((a, b) -> b[6].compareTo(a[6]));
+        return new SimpleResultSet(filas, 8);
+    }
 }

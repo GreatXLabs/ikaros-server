@@ -2,24 +2,12 @@ package com.greatxlabs.ikaros.server;
 
 import java.sql.*;
 
-/**
- * Procesa todos los mensajes del protocolo de aplicación.
- *
- * Formato de solicitud: OPERACION|token|param1|param2|...
- * Formato de respuesta:  OK|datos  o  ERROR|codigo|mensaje
- *
- * Listas:   OK|col1~col2;col1~col2  (~ = columnas, ; = filas)
- * Detalle:  OK|col1|col2|col3
- *
- * Codigos de error:
- *   E00 = sesion invalida/vencida
- *   E01 = permiso insuficiente
- *   E02 = credenciales incorrectas
- *   E05 = ID duplicado (SQL 1062)
- *   E07 = recurso referenciado no existe (SQL 1452)
- *   E99 = error interno del servidor
- */
 public class Protocolo {
+
+	private static class ErrorProtocolo extends RuntimeException {
+		final String respuesta;
+		ErrorProtocolo(String respuesta) { super(respuesta); this.respuesta = respuesta; }
+	}
 
 	private final GestorSesiones gestorSesiones;
 	private final AccesoDatos accesoDatos;
@@ -30,12 +18,20 @@ public class Protocolo {
 	}
 
 	public String procesar(String solicitud) {
+		String resultado = procesarInterno(solicitud);
+		LogSistema.registrar("RESULTADO " + resultado);
+		return resultado;
+	}
+
+	private String procesarInterno(String solicitud) {
 		if (solicitud == null || solicitud.isEmpty()) {
 			return "ERROR|E99|Error interno del servidor";
 		}
 
 		String[] partes = solicitud.split("\\|", -1);
 		String operacion = partes[0].toUpperCase();
+		String tokenLog = partes.length > 1 ? partes[1] : "-";
+		LogSistema.registrar("OPERACION " + operacion + " token=" + tokenLog);
 
 		if (operacion.equals("LOGIN")) {
 			return manejarLogin(partes);
@@ -47,230 +43,327 @@ public class Protocolo {
 
 		String token = partes[1];
 
-		// ADVERTENCIA: REGISTRAR_LOG no requiere sesion valida.
-	// Cualquier cliente puede registrar logs sin autenticarse — ver issue #5
-		if (operacion.equals("REGISTRAR_LOG")) {
-			try {
-				if (partes.length < 6) return "ERROR|E99|Parametros insuficientes";
-				int usuarioID = Integer.parseInt(partes[2]);
-				int accionID = Integer.parseInt(partes[3]);
-				int tipoEntidadID = Integer.parseInt(partes[4]);
-				int entidadID = Integer.parseInt(partes[5]);
-				accesoDatos.registrarLog(usuarioID, accionID, tipoEntidadID, entidadID);
-				return "OK|Log registrado";
-			} catch (Exception e) {
-				return "ERROR|E99|Error interno del servidor: " + e.getMessage();
-			}
-		}
-
-		if (!gestorSesiones.esSesionValida(token)) {
-			return "ERROR|E00|Sesión inválida o vencida";
-		}
-
-		if (!gestorSesiones.tienePermiso(token, operacion)) {
-			return "ERROR|E01|Permiso insuficiente para esta operación";
-		}
-
 		try {
+			if (!gestorSesiones.esSesionValida(token)) {
+				return "ERROR|E00|Sesión inválida o vencida";
+			}
+
+			if (!gestorSesiones.tienePermiso(token, operacion)) {
+				return "ERROR|E01|Permiso insuficiente para esta operación";
+			}
+
+			
 			switch (operacion) {
-			// --- ROLES ---
-			// CONSULTAR_ROLES|token
 			case "CONSULTAR_ROLES":
 				return formatearLista(accesoDatos.consultarRoles(), 2);
-
-			// --- APTITUDES ---
-			// CONSULTAR_APTITUDES|token
 			case "CONSULTAR_APTITUDES":
 				return formatearLista(accesoDatos.consultarAptitudes(), 2);
-
-			// --- ESTADOS ---
-			// LISTAR_ESTADOS_MISIONES|token
-			// LISTAR_ESTADOS_TRIPULANTES|token
-			// LISTAR_ESTADOS_EVENTOS|token
 			case "LISTAR_ESTADOS_MISIONES":
 				return formatearLista(accesoDatos.listarEstadosMision(), 2);
-
 			case "LISTAR_ESTADOS_TRIPULANTES":
 				return formatearLista(accesoDatos.listarEstadosTripulante(), 2);
-
 			case "LISTAR_ESTADOS_EVENTOS":
 				return formatearLista(accesoDatos.listarEstadosEvento(), 2);
-
-			// --- USUARIOS (RRHH) ---
-			// REGISTRAR_USUARIO|token|usuario|clave|nombre|apellido|rol
-			case "REGISTRAR_USUARIO": {
-				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.registrarUsuario(
-					CacheMaestra.getRolID(partes[6]),
-					partes[2], partes[4], partes[5], partes[3]
-				);
-				return "OK|Usuario registrado";
-			}
-
-			// MODIFICAR_USUARIO|token|usuario|clave|nombre|apellido|rol
-			// Si clave viene vacia, se conserva la actual (obteniendola de la BD)
-			// TODO: obtenerClaveUsuario expone contraseñas — ver issue #15
-			case "MODIFICAR_USUARIO": {
-				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
-				int usuarioID = accesoDatos.obtenerUsuarioID(partes[2]);
-				String clave = partes[3].isEmpty() ? accesoDatos.obtenerClaveUsuario(partes[2]) : partes[3];
-				accesoDatos.modificarUsuario(
-					usuarioID, CacheMaestra.getRolID(partes[6]),
-					partes[2], partes[4], partes[5], clave
-				);
-				return "OK|Usuario modificado";
-			}
-
+			case "REGISTRAR_LOG":
+				return manejarRegistroLog(token, partes);
+			case "REGISTRAR_USUARIO":
+			case "MODIFICAR_USUARIO":
 			case "BAJA_USUARIO":
-				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.bajaUsuario(partes[2]);
-				return "OK|Usuario dado de baja";
-
 			case "LISTAR_USUARIOS":
-				return formatearLista(accesoDatos.listarUsuarios(), 7);
-
-			// --- MISIONES (COORDINADOR) ---
-			// REGISTRAR_MISION|token|?|nombre|descripcion|fechaInicio|fechaFin
-			//   Nota: partes[2] no se usa (se asigna estado PLANIFICADA automaticamente)
+				return manejarUsuarios(operacion, partes, token);
 			case "REGISTRAR_MISION":
-				if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.registrarMision(
-					CacheMaestra.getEstadoMisionID("PLANIFICADA"),
-					partes[3], partes[4],
-					parseTimestamp(partes[5]),
-					parseTimestamp(partes[6])
-				);
-				return "OK|Misión registrada";
-
 			case "MODIFICAR_MISION":
-				if (partes.length < 6) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.modificarMision(
-					Integer.parseInt(partes[2]),
-					partes[3], partes[4],
-					parseTimestamp(partes[5]),
-					parseTimestamp(partes[6])
-				);
-				return "OK|Misión modificada";
-
 			case "ACTUALIZAR_ESTADO_MISION":
-				if (partes.length < 4) return "ERROR|E99|Parámetros insuficientes";
-				Integer retrasoInicio = partes.length > 4 && !partes[4].isEmpty() ? Integer.parseInt(partes[4]) : null;
-				Integer retrasoFin = partes.length > 5 && !partes[5].isEmpty() ? Integer.parseInt(partes[5]) : null;
-				accesoDatos.actualizarEstadoMision(Integer.parseInt(partes[2]), CacheMaestra.getEstadoMisionID(partes[3]), retrasoInicio, retrasoFin);
-				return "OK|Estado actualizado";
-
 			case "LISTAR_MISIONES":
-				return formatearLista(accesoDatos.listarMisiones(), 7);
-
 			case "CONSULTAR_MISION":
-				return formatearDetalle(accesoDatos.consultarMision(Integer.parseInt(partes[2])), 8);
-
-			// --- TRIPULANTES (ASIGNADOR) ---
-			// REGISTRAR_TRIPULANTE|token|sexo|fechaNac|?|peso|altura|nombre|apellido|imagen
-			//   Nota: partes[2]=sexo, partes[3]=fechaNac, partes[4]=peso, partes[5]=altura,
-			//         partes[6]=nombre, partes[7]=apellido, partes[8]=imagen
-			// TODO: parametros posicionales fragiles — ver issue #4
+				return manejarMisiones(operacion, partes, token);
 			case "REGISTRAR_TRIPULANTE":
-				if (partes.length < 9) return "ERROR|E99|Parámetros insuficientes";
-				return formatearDetalle(accesoDatos.registrarTripulante(
-					CacheMaestra.getEstadoTripulanteID("INACTIVO"),
-					obtenerSexoID(partes[2]),
-					Integer.parseInt(partes[4]),
-					Integer.parseInt(partes[5]),
-					partes[6], partes[7], partes[8],
-					Date.valueOf(partes[3])
-				), 1);
-
 			case "MODIFICAR_TRIPULANTE":
-				if (partes.length < 11) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.modificarTripulante(
-					Integer.parseInt(partes[2]),
-					CacheMaestra.getEstadoTripulanteID(partes[3]),
-					obtenerSexoID(partes[4]),
-					Integer.parseInt(partes[6]),
-					Integer.parseInt(partes[7]),
-					partes[8], partes[9],
-					partes[10],
-					Date.valueOf(partes[5])
-				);
-				return "OK|Tripulante modificado";
-
 			case "BAJA_TRIPULANTE":
-				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.bajaTripulante(Integer.parseInt(partes[2]));
-				return "OK|Tripulante dado de baja";
-
-		case "ELIMINAR_CAPACIDADES":
-			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
-			accesoDatos.eliminarCapacidades(Integer.parseInt(partes[2]));
-			return "OK|Capacidades eliminadas";
-
-		case "REGISTRAR_CAPACIDAD":
-			if (partes.length < 6) return "ERROR|E99|Parámetros insuficientes";
-			accesoDatos.registrarCapacidad(
-				Integer.parseInt(partes[2]),
-				Integer.parseInt(partes[3]),
-				Integer.parseInt(partes[4]),
-				partes[5]
-			);
-			return "OK|Capacidad registrada";
-
+			case "ELIMINAR_CAPACIDADES":
+			case "REGISTRAR_CAPACIDAD":
 			case "ASIGNAR_TRIPULANTE":
-				if (partes.length < 4) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.asignarTripulante(Integer.parseInt(partes[2]), Integer.parseInt(partes[3]), new Timestamp(System.currentTimeMillis()));
-				return "OK|Tripulante asignado a misión";
-
 			case "LISTAR_TRIPULANTES":
-				return formatearLista(accesoDatos.listarTripulantes(), 8);
-
 			case "LISTAR_TRIPULANTES_MISION":
-				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
-				return formatearLista(accesoDatos.listarTripulantesMision(Integer.parseInt(partes[2])), 5);
-
 			case "CONSULTAR_TRIPULANTE":
-				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
-				return formatearDetalle(accesoDatos.consultarTripulante(Integer.parseInt(partes[2])), 9);
-
-		case "CONSULTAR_CAPACIDADES":
-			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
-			return formatearLista(accesoDatos.consultarCapacidades(Integer.parseInt(partes[2])), 4);
-
+			case "CONSULTAR_CAPACIDADES":
 			case "LISTAR_MISIONES_TRIPULANTE":
-				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
-				return formatearLista(accesoDatos.listarMisionesTripulante(Integer.parseInt(partes[2])), 5);
-
-			// --- EVENTOS (REGISTRADOR) ---
-			// REGISTRAR_EVENTO|token|misionID|titulo|descripcion
-			// TODO: no valida que la mision exista — ver issue #10
+				return manejarTripulantes(operacion, partes, token);
 			case "LISTAR_EVENTOS":
-				return formatearLista(accesoDatos.listarEventos(), 6);
-
 			case "REGISTRAR_EVENTO":
-				if (partes.length < 5) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.registrarEvento(Integer.parseInt(partes[2]), partes[3], partes[4], new Timestamp(System.currentTimeMillis()));
-				return "OK|Evento registrado";
-
 			case "BAJA_EVENTO":
-				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
-				accesoDatos.bajaEvento(Integer.parseInt(partes[2]));
-				return "OK|Evento dado de baja";
-
 			case "CONSULTAR_EVENTOS":
-				if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
-				return formatearLista(accesoDatos.consultarEventos(Integer.parseInt(partes[2])), 5);
-
-			// --- LOGS (JEFE) ---
-			// VER_LOGS|token
 			case "VER_LOGS":
-				return formatearLista(accesoDatos.verLogs(), 7);
-
+				return manejarEventos(operacion, partes, token);
 			default:
 				return "ERROR|E01|Permiso insuficiente para esta operación";
 			}
+		} catch (ErrorProtocolo e) {
+			return e.respuesta;
 		} catch (SQLException e) {
 			return manejarErrorSQL(e);
 		} catch (Exception e) {
 			return "ERROR|E99|Error interno del servidor: " + e.getMessage();
+		}
+	}
+
+	private String manejarRegistroLog(String token, String[] partes) {
+		if (partes.length < 5) return "ERROR|E99|Parámetros insuficientes";
+		int accionID = parseEntero(partes[2], "accionID");
+		int tipoEntidadID = parseEntero(partes[3], "tipoEntidadID");
+		int entidadID = parseEntero(partes[4], "entidadID");
+		String descripcion = partes.length > 5 ? partes[5] : "";
+		Integer usuarioID = gestorSesiones.obtenerUsuarioID(token);
+		if (usuarioID == null) return "ERROR|E00|Sesión inválida o vencida";
+		accesoDatos.registrarLog(usuarioID, accionID, tipoEntidadID, entidadID, descripcion);
+		return "OK|Log registrado";
+	}
+
+	private String manejarUsuarios(String operacion, String[] partes, String token) throws SQLException {
+		Integer loggedInUserID = gestorSesiones.obtenerUsuarioID(token);
+		if (loggedInUserID == null) return "ERROR|E00|Sesión inválida o vencida";
+		switch (operacion) {
+		case "REGISTRAR_USUARIO": {
+			if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
+			String usuario = partes[2];
+			String clave = partes[3];
+			String nombre = partes[4];
+			String apellido = partes[5];
+			String rol = partes[6];
+			if ("JEFE".equals(rol.toUpperCase())) return "ERROR|E99|No se puede crear cuentas con rol Jefe";
+			int nuevoId = accesoDatos.registrarUsuario(CacheMaestra.getRolID(rol), usuario, nombre, apellido, clave);
+			String descLog = "Usuario=" + usuario + "|Nombre=" + nombre + "|Apellido=" + apellido + "|Rol=" + rol;
+			accesoDatos.registrarLog(loggedInUserID, 13, 4, nuevoId, descLog);
+			return "OK|Usuario registrado";
+		}
+		case "MODIFICAR_USUARIO": {
+			if (partes.length < 8) return "ERROR|E99|Parámetros insuficientes";
+			int usuarioID = parseEntero(partes[2], "usuarioID");
+			if (accesoDatos.isUsuarioInactivo(usuarioID))
+				return "ERROR|E08|No se puede modificar un usuario que está inactivo";
+			String usuario = partes[3];
+			String clave = partes[4].isEmpty() ? null : partes[4];
+			String nombre = partes[5];
+			String apellido = partes[6];
+			String rol = partes[7];
+			accesoDatos.modificarUsuario(loggedInUserID, usuarioID, CacheMaestra.getRolID(rol), usuario, nombre, apellido, clave);
+			return "OK|Usuario modificado";
+		}
+		case "BAJA_USUARIO": {
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int usuarioID = parseEntero(partes[2], "usuarioID");
+			if (accesoDatos.isUsuarioInactivo(usuarioID))
+				return "ERROR|E08|El usuario con ID " + usuarioID + " ya está inactivo";
+			accesoDatos.bajaUsuario(loggedInUserID, partes[2]);
+			return "OK|Usuario dado de baja";
+		}
+		case "LISTAR_USUARIOS":
+			return formatearLista(accesoDatos.listarUsuarios(), 8);
+		default:
+			return "ERROR|E01|Permiso insuficiente para esta operación";
+		}
+	}
+
+	private String manejarMisiones(String operacion, String[] partes, String token) throws SQLException {
+		Integer loggedInUserID = gestorSesiones.obtenerUsuarioID(token);
+		if (loggedInUserID == null) return "ERROR|E00|Sesión inválida o vencida";
+		switch (operacion) {
+		case "REGISTRAR_MISION": {
+			if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
+			String nombre = partes[3];
+			String descripcion = partes[4];
+			Timestamp fechaInicio = parseTimestamp(partes[5], "fechaInicio");
+			Timestamp fechaFin = parseTimestamp(partes[6], "fechaFin");
+			int nuevoId = accesoDatos.registrarMision(CacheMaestra.getEstadoMisionID("PLANIFICADA"), nombre, descripcion, fechaInicio, fechaFin);
+			String descLog = "Nombre=" + nombre + "|Descripcion=" + descripcion + "|FechaInicio=" + fechaInicio + "|FechaFin=" + fechaFin;
+			accesoDatos.registrarLog(loggedInUserID, 1, 1, nuevoId, descLog);
+			return "OK|Misión registrada";
+		}
+		case "MODIFICAR_MISION": {
+			if (partes.length < 7) return "ERROR|E99|Parámetros insuficientes";
+			int misionID = parseEntero(partes[2], "misionID");
+			String nombre = partes[3];
+			String descripcion = partes[4];
+			Timestamp fechaInicio = parseTimestamp(partes[5], "fechaInicio");
+			Timestamp fechaFin = parseTimestamp(partes[6], "fechaFin");
+			if (!accesoDatos.existeMision(misionID))
+				return "ERROR|E07|La misión con ID " + misionID + " no existe";
+			if (accesoDatos.isMisionTerminada(misionID))
+				return "ERROR|E08|No se puede modificar una misión que está finalizada o cancelada";
+			accesoDatos.modificarMision(loggedInUserID, misionID, nombre, descripcion, fechaInicio, fechaFin);
+			return "OK|Misión modificada";
+		}
+		case "ACTUALIZAR_ESTADO_MISION": {
+			if (partes.length < 4) return "ERROR|E99|Parámetros insuficientes";
+			int misionID = parseEntero(partes[2], "misionID");
+			String estado = partes[3];
+			Integer retrasoInicio = partes.length > 4 && !partes[4].isEmpty() ? parseEntero(partes[4], "retrasoInicio") : null;
+			Integer retrasoFin = partes.length > 5 && !partes[5].isEmpty() ? parseEntero(partes[5], "retrasoFin") : null;
+			if (!accesoDatos.existeMision(misionID))
+				return "ERROR|E07|La misión con ID " + misionID + " no existe";
+			if (accesoDatos.isMisionTerminada(misionID))
+				return "ERROR|E08|No se puede actualizar el estado de una misión que está finalizada o cancelada";
+			accesoDatos.actualizarEstadoMision(loggedInUserID, misionID, CacheMaestra.getEstadoMisionID(estado), retrasoInicio, retrasoFin);
+			return "OK|Estado actualizado";
+		}
+		case "LISTAR_MISIONES":
+			return formatearLista(accesoDatos.listarMisiones(), 7);
+		case "CONSULTAR_MISION": {
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int misionID = parseEntero(partes[2], "misionID");
+			return formatearDetalle(accesoDatos.consultarMision(misionID), 8);
+		}
+		default:
+			return "ERROR|E01|Permiso insuficiente para esta operación";
+		}
+	}
+
+	private String manejarTripulantes(String operacion, String[] partes, String token) throws SQLException {
+		Integer loggedInUserID = gestorSesiones.obtenerUsuarioID(token);
+		if (loggedInUserID == null) return "ERROR|E00|Sesión inválida o vencida";
+		switch (operacion) {
+		case "REGISTRAR_TRIPULANTE": {
+			if (partes.length < 9) return "ERROR|E99|Parámetros insuficientes";
+			String sexo = partes[2];
+			Date fechaNacimiento = parseFecha(partes[3], "fechaNacimiento");
+			int peso = parseEntero(partes[4], "peso");
+			int altura = parseEntero(partes[5], "altura");
+			String nombre = partes[6];
+			String apellido = partes[7];
+			String imagen = partes[8];
+			ResultSet rs = accesoDatos.registrarTripulante(
+				CacheMaestra.getEstadoTripulanteID("INACTIVO"), obtenerSexoID(sexo),
+				peso, altura, nombre, apellido, imagen, fechaNacimiento
+			);
+			if (rs.next()) {
+				int nuevoId = rs.getInt(1);
+				String descLog = "Nombre=" + nombre + "|Apellido=" + apellido + "|Sexo=" + sexo + "|Peso=" + peso + "|Altura=" + altura;
+				accesoDatos.registrarLog(loggedInUserID, 8, 2, nuevoId, descLog);
+				return "OK|" + nuevoId;
+			}
+			return "ERROR|E99|Error al registrar tripulante";
+		}
+		case "MODIFICAR_TRIPULANTE": {
+			if (partes.length < 11) return "ERROR|E99|Parámetros insuficientes";
+			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			if (!accesoDatos.existeTripulante(tripulanteID))
+				return "ERROR|E07|El tripulante con ID " + tripulanteID + " no existe";
+			if (accesoDatos.isTripulanteRetirado(tripulanteID))
+				return "ERROR|E08|No se puede modificar un tripulante que está retirado";
+			String estado = partes[3];
+			String sexo = partes[4];
+			Date fechaNacimiento = parseFecha(partes[5], "fechaNacimiento");
+			int peso = parseEntero(partes[6], "peso");
+			int altura = parseEntero(partes[7], "altura");
+			String nombre = partes[8];
+			String apellido = partes[9];
+			String imagen = partes[10];
+			accesoDatos.modificarTripulante(loggedInUserID, tripulanteID, CacheMaestra.getEstadoTripulanteID(estado),
+				obtenerSexoID(sexo), peso, altura, nombre, apellido, imagen, fechaNacimiento);
+			return "OK|Tripulante modificado";
+		}
+		case "BAJA_TRIPULANTE": {
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			if (!accesoDatos.existeTripulante(tripulanteID))
+				return "ERROR|E07|El tripulante con ID " + tripulanteID + " no existe";
+			if (accesoDatos.isTripulanteRetirado(tripulanteID))
+				return "ERROR|E08|El tripulante con ID " + tripulanteID + " ya está retirado";
+			accesoDatos.bajaTripulante(loggedInUserID, tripulanteID);
+			return "OK|Tripulante dado de baja";
+		}
+		case "ELIMINAR_CAPACIDADES": {
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			if (accesoDatos.isTripulanteRetirado(tripulanteID))
+				return "ERROR|E08|No se pueden eliminar capacidades de un tripulante que está retirado";
+			accesoDatos.eliminarCapacidades(tripulanteID);
+			return "OK|Capacidades eliminadas";
+		}
+		case "REGISTRAR_CAPACIDAD": {
+			if (partes.length < 6) return "ERROR|E99|Parámetros insuficientes";
+			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			if (accesoDatos.isTripulanteRetirado(tripulanteID))
+				return "ERROR|E08|No se puede registrar capacidad de un tripulante que está retirado";
+			int aptitudID = parseEntero(partes[3], "aptitudID");
+			int calificacion = parseEntero(partes[4], "calificacion");
+			String fecha = partes[5];
+			accesoDatos.registrarCapacidad(loggedInUserID, tripulanteID, aptitudID, calificacion, fecha);
+			return "OK|Capacidad registrada";
+		}
+		case "ASIGNAR_TRIPULANTE": {
+			if (partes.length < 4) return "ERROR|E99|Parámetros insuficientes";
+			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			int misionID = parseEntero(partes[3], "misionID");
+			if (!accesoDatos.existeTripulante(tripulanteID))
+				return "ERROR|E07|El tripulante con ID " + tripulanteID + " no existe";
+			if (!accesoDatos.existeMision(misionID))
+				return "ERROR|E07|La misión con ID " + misionID + " no existe";
+			if (accesoDatos.isTripulanteRetirado(tripulanteID))
+				return "ERROR|E08|No se puede asignar a una misión un tripulante que está retirado";
+			accesoDatos.asignarTripulante(loggedInUserID, tripulanteID, misionID, new Timestamp(System.currentTimeMillis()));
+			return "OK|Tripulante asignado a misión";
+		}
+		case "LISTAR_TRIPULANTES":
+			return formatearLista(accesoDatos.listarTripulantes(), 8);
+		case "LISTAR_TRIPULANTES_MISION": {
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int misionID = parseEntero(partes[2], "misionID");
+			return formatearLista(accesoDatos.listarTripulantesMision(misionID), 5);
+		}
+		case "CONSULTAR_TRIPULANTE": {
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			return formatearDetalle(accesoDatos.consultarTripulante(tripulanteID), 9);
+		}
+		case "CONSULTAR_CAPACIDADES": {
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			if (!accesoDatos.existeTripulante(tripulanteID))
+				return "ERROR|E07|El tripulante con ID " + tripulanteID + " no existe";
+			return formatearLista(accesoDatos.consultarCapacidades(tripulanteID), 4);
+		}
+		case "LISTAR_MISIONES_TRIPULANTE": {
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int tripulanteID = parseEntero(partes[2], "tripulanteID");
+			return formatearLista(accesoDatos.listarMisionesTripulante(tripulanteID), 5);
+		}
+		default:
+			return "ERROR|E01|Permiso insuficiente para esta operación";
+		}
+	}
+
+	private String manejarEventos(String operacion, String[] partes, String token) throws SQLException {
+		Integer loggedInUserID = gestorSesiones.obtenerUsuarioID(token);
+		if (loggedInUserID == null) return "ERROR|E00|Sesión inválida o vencida";
+		switch (operacion) {
+		case "LISTAR_EVENTOS":
+			return formatearLista(accesoDatos.listarEventos(), 6);
+		case "REGISTRAR_EVENTO": {
+			if (partes.length < 5) return "ERROR|E99|Parámetros insuficientes";
+			int misionID = parseEntero(partes[2], "misionID");
+			String titulo = partes[3];
+			String descripcion = partes[4];
+			if (!accesoDatos.existeMision(misionID))
+				return "ERROR|E07|La misión con ID " + misionID + " no existe";
+			accesoDatos.registrarEvento(loggedInUserID, misionID, titulo, descripcion, new Timestamp(System.currentTimeMillis()));
+			return "OK|Evento registrado";
+		}
+		case "BAJA_EVENTO": {
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int eventoID = parseEntero(partes[2], "eventoID");
+			accesoDatos.bajaEvento(loggedInUserID, eventoID);
+			return "OK|Evento dado de baja";
+		}
+		case "CONSULTAR_EVENTOS": {
+			if (partes.length < 3) return "ERROR|E99|Parámetros insuficientes";
+			int misionID = parseEntero(partes[2], "misionID");
+			return formatearLista(accesoDatos.consultarEventos(misionID), 5);
+		}
+		case "VER_LOGS":
+			return formatearLista(accesoDatos.verLogs(), 8);
+		default:
+			return "ERROR|E01|Permiso insuficiente para esta operación";
 		}
 	}
 
@@ -294,11 +387,37 @@ public class Protocolo {
 		return "ERROR|E99|Error interno del servidor";
 	}
 
+	private int parseEntero(String valor, String nombre) {
+		try {
+			return Integer.parseInt(valor);
+		} catch (NumberFormatException e) {
+			throw new ErrorProtocolo("ERROR|E10|El parámetro '" + nombre + "' debe ser un número entero");
+		}
+	}
+
+	private Date parseFecha(String valor, String nombre) {
+		try {
+			return Date.valueOf(valor);
+		} catch (IllegalArgumentException e) {
+			throw new ErrorProtocolo("ERROR|E10|El parámetro '" + nombre + "' tiene formato de fecha inválido (esperado: YYYY-MM-DD)");
+		}
+	}
+
+	private Timestamp parseTimestamp(String valor, String nombre) {
+		try {
+			String dt = valor.replace("T", " ");
+			if (!dt.contains(":")) dt += " 00:00:00";
+			else if (dt.split(":").length == 2) dt += ":00";
+			return Timestamp.valueOf(dt);
+		} catch (IllegalArgumentException e) {
+			throw new ErrorProtocolo("ERROR|E10|El parámetro '" + nombre + "' tiene formato de fecha inválido (esperado: YYYY-MM-DD o YYYY-MM-DDTHH:MM:SS)");
+		}
+	}
+
 	private String formatearLista(ResultSet rs, int columnas) throws SQLException {
 		StringBuilder sb = new StringBuilder("OK|");
 		boolean primero = true;
 		while (rs.next()) {
-			// Saltar filas de MensajeResultado (patrón "Exito:" o "Error:" en primera columna)
 			String firstCol = rs.getString(1);
 			if (firstCol != null && (firstCol.startsWith("Exito:") || firstCol.startsWith("Error:"))) continue;
 			if (!primero) sb.append(";");
@@ -322,12 +441,5 @@ public class Protocolo {
 			return sb.toString();
 		}
 		return "ERROR|E07|El recurso solicitado no existe";
-	}
-
-	private Timestamp parseTimestamp(String value) {
-		String datetime = value.replace("T", " ");
-		if (!datetime.contains(":")) datetime += " 00:00:00";
-		else if (datetime.split(":").length == 2) datetime += ":00";
-		return Timestamp.valueOf(datetime);
 	}
 }

@@ -1,6 +1,8 @@
 name: Feature Request
 description: Nueva funcionalidad o mejora
+type: Feature
 labels: ["feature"]
+assignees: ["LucaGMB"]
 body:
   - type: markdown
     attributes:

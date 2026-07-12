@@ -3,68 +3,91 @@ package com.greatxlabs.ikaros.server;
 import java.net.*;
 import java.io.*;
 
-/**
- * Punto de entrada del servidor Ikaros.
- *
- * Modo SECUENCIAL: acepta un cliente a la vez. El servidor se bloquea
- * en serverSocket.accept() hasta que llega una conexion, y no acepta
- * la siguiente hasta que el cliente actual se desconecta.
- *
- * Para Bimestre 2: debera convertirse a servidor concurrente
- * con un thread por conexion (o thread pool).
- */
 public class Servidor {
+
+    private static class ManejadorCliente implements Runnable {
+        private final Socket socket;
+        private final GestorSesiones gestorSesiones;
+        private final AccesoDatos accesoDatos;
+
+        ManejadorCliente(Socket socket, GestorSesiones gestorSesiones, AccesoDatos accesoDatos) {
+            this.socket = socket;
+            this.gestorSesiones = gestorSesiones;
+            this.accesoDatos = accesoDatos;
+        }
+
+        @Override
+        public void run() {
+            String direccionCliente = socket.getInetAddress().toString();
+            try (socket) {
+                socket.setSoTimeout(120000);
+                BufferedReader entrada = new BufferedReader(
+                        new InputStreamReader(socket.getInputStream()));
+                PrintWriter salida = new PrintWriter(socket.getOutputStream(), true);
+
+                Protocolo protocolo = new Protocolo(gestorSesiones, accesoDatos);
+
+                String mensaje;
+                while ((mensaje = entrada.readLine()) != null) {
+                    System.out.println("[" + Thread.currentThread().getName() + "] Solicitud: " + enmascararClave(mensaje));
+
+                    String respuesta = protocolo.procesar(mensaje);
+
+                    System.out.println("[" + Thread.currentThread().getName() + "] Respuesta: " + respuesta);
+                    salida.println(respuesta);
+                }
+            } catch (java.net.SocketTimeoutException e) {
+                System.out.println("[" + Thread.currentThread().getName() + "] Timeout de conexion con " + direccionCliente);
+            } catch (IOException e) {
+                System.err.println("[" + Thread.currentThread().getName() + "] Error manejando cliente: " + e.getMessage());
+            } finally {
+                System.out.println("[" + Thread.currentThread().getName() + "] Cliente desconectado.");
+                LogSistema.registrar("DESCONEXION " + direccionCliente);
+            }
+        }
+
+        private static String enmascararClave(String mensaje) {
+            String[] partes = mensaje.split("\\|", -1);
+            if (partes.length == 0) return mensaje;
+
+            int indiceClave;
+            switch (partes[0]) {
+                case "LOGIN": indiceClave = 2; break;
+                case "REGISTRAR_USUARIO": indiceClave = 3; break;
+                case "MODIFICAR_USUARIO": indiceClave = 4; break;
+                default: return mensaje;
+            }
+
+            if (indiceClave >= partes.length) return mensaje;
+            partes[indiceClave] = "***";
+            return String.join("|", partes);
+        }
+    }
+
     public static void main(String[] args) {
         int puerto = Configuracion.getPuerto();
-        
-        // Instanciar componentes de datos
+
         AccesoDatos accesoDatos = new AccesoDatos();
         CacheMaestra cache = new CacheMaestra(accesoDatos);
-        
-        // Inicialización inicial
+
         cache.cargarTodo();
-        
-        // Instanciar los componentes de lógica
+
         GestorSesiones gestorSesiones = new GestorSesiones(accesoDatos);
-        Protocolo protocolo = new Protocolo(gestorSesiones, accesoDatos);
-        
+
         System.out.println("Servidor Ikaros iniciado en puerto " + puerto);
-        System.out.println("Esperando conexiones (Modo Secuencial)...");
+        System.out.println("Esperando conexiones (Modo Concurrente)...");
 
         try (ServerSocket serverSocket = new ServerSocket(puerto)) {
-            // Gancho para cerrar la conexión limpiamente al apagar el servidor
-            Runtime.getRuntime().addShutdownHook(new Thread(ConexionBD::cerrarConexion));
-            
             while (true) {
-                // El servidor se detiene aquí hasta que llega un cliente
-                try (Socket cliente = serverSocket.accept()) {
-                    System.out.println("Cliente conectado: " + cliente.getInetAddress());
-                    
-                    BufferedReader entrada = new BufferedReader(
-                            new InputStreamReader(cliente.getInputStream()));
-                    PrintWriter salida = new PrintWriter(cliente.getOutputStream(), true);
-                    
-                    String mensaje;
-                    // Bucle para procesar múltiples mensajes de un mismo cliente
-                    while ((mensaje = entrada.readLine()) != null) {
-                        System.out.println("Solicitud: " + mensaje);
-                        
-                        // Delegar el procesamiento al protocolo
-                        String respuesta = protocolo.procesar(mensaje);
-                        
-                        System.out.println("Respuesta: " + respuesta);
-                        salida.println(respuesta);
-                    }
-                    
-                    System.out.println("Cliente desconectado.");
-                } catch (IOException e) {
-                    System.err.println("Error manejando cliente: " + e.getMessage());
-                }
+                Socket cliente = serverSocket.accept();
+                System.out.println("Cliente conectado: " + cliente.getInetAddress());
+                LogSistema.registrar("CONEXION nueva desde " + cliente.getInetAddress());
+
+                Thread hilo = new Thread(new ManejadorCliente(cliente, gestorSesiones, accesoDatos));
+                hilo.start();
             }
         } catch (IOException e) {
             System.err.println("Error crítico en el servidor: " + e.getMessage());
-        } finally {
-            ConexionBD.cerrarConexion();
         }
     }
 }

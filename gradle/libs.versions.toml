@@ -4,9 +4,13 @@
 [versions]
 guava = "33.5.0-jre"
 junit-jupiter = "6.0.1"
-mariadb-java-client = "3.5.1"
+dotenv-java = "3.2.0"
+jackson = "2.15.2"
+bcrypt = "0.10.2"
 
 [libraries]
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
-mariadb-java-client = { module = "org.mariadb.jdbc:mariadb-java-client", version.ref = "mariadb-java-client" }
+dotenv-java = { module = "io.github.cdimascio:dotenv-java", version.ref = "dotenv-java" }
+jackson = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+bcrypt = { module = "at.favre.lib:bcrypt", version.ref = "bcrypt" }

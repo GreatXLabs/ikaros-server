@@ -16,4 +16,6 @@ COPY --from=build /build/app/build/libs/ikaros-server-*-all.jar server.jar
 
 EXPOSE 9000
 
+RUN mkdir -p /app/data
+
 ENTRYPOINT ["java", "-jar", "server.jar"]
