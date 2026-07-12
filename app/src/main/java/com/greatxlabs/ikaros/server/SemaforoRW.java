@@ -14,7 +14,14 @@ public class SemaforoRW {
         mutex.acquire();
         lectoresActivos++;
         if (lectoresActivos == 1) {
-            recurso.acquire();
+            try {
+                recurso.acquire();
+            } catch (InterruptedException e) {
+                lectoresActivos--;
+                mutex.release();
+                turno.release();
+                throw e;
+            }
         }
         mutex.release();
         turno.release();
@@ -31,7 +38,12 @@ public class SemaforoRW {
 
     public void iniciarEscritura() throws InterruptedException {
         turno.acquire();
-        recurso.acquire();
+        try {
+            recurso.acquire();
+        } catch (InterruptedException e) {
+            turno.release();
+            throw e;
+        }
     }
 
     public void terminarEscritura() {

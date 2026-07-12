@@ -20,6 +20,7 @@ public class Servidor {
         public void run() {
             String direccionCliente = socket.getInetAddress().toString();
             try (socket) {
+                socket.setSoTimeout(120000);
                 BufferedReader entrada = new BufferedReader(
                         new InputStreamReader(socket.getInputStream()));
                 PrintWriter salida = new PrintWriter(socket.getOutputStream(), true);
@@ -35,6 +36,8 @@ public class Servidor {
                     System.out.println("[" + Thread.currentThread().getName() + "] Respuesta: " + respuesta);
                     salida.println(respuesta);
                 }
+            } catch (java.net.SocketTimeoutException e) {
+                System.out.println("[" + Thread.currentThread().getName() + "] Timeout de conexion con " + direccionCliente);
             } catch (IOException e) {
                 System.err.println("[" + Thread.currentThread().getName() + "] Error manejando cliente: " + e.getMessage());
             } finally {
