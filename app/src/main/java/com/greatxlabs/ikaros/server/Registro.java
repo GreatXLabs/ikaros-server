@@ -63,8 +63,6 @@ public class Registro {
     public String getDescripcion() { return descripcion; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
-    // --- Inner classes ---
-
     static class AccionJson {
         public int AccionID;
         public String Accion;
@@ -77,12 +75,8 @@ public class Registro {
         public EntidadJson() {}
     }
 
-    // --- Infrastructure ---
-
     private static final ObjectMapper mapper = new ObjectMapper();
     static final SemaforoRW registroLock = new SemaforoRW();
-
-    // --- JSON I/O ---
 
     static List<Registro> leerDesdeJson() {
         try {
@@ -129,8 +123,6 @@ public class Registro {
         }
     }
 
-    // --- Lookups ---
-
     static String obtenerNombreAccionPorId(int accionID) {
         List<AccionJson> acciones = leerAccionesDesdeJson();
         for (AccionJson a : acciones) {
@@ -146,8 +138,6 @@ public class Registro {
         }
         return null;
     }
-
-    // --- CRUD ---
 
     static void registrarLog(int usuarioID, int accionID, int tipoEntidadID, int entidadID, String descripcion) {
         try {

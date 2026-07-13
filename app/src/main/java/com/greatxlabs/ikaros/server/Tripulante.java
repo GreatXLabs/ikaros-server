@@ -74,8 +74,6 @@ public class Tripulante {
         this.estadoTID = 3;
     }
 
-    // --- Inner classes ---
-
     static class EstadoTripulante {
         public int EstadoTID;
         public String Estado;
@@ -88,12 +86,8 @@ public class Tripulante {
         public SexoJson() {}
     }
 
-    // --- Infrastructure ---
-
     private static final ObjectMapper mapper = new ObjectMapper();
     static final SemaforoRW tripulanteLock = new SemaforoRW();
-
-    // --- JSON I/O ---
 
     static List<Tripulante> leerDesdeJson() {
         try {
@@ -140,8 +134,6 @@ public class Tripulante {
         }
     }
 
-    // --- Lookups ---
-
     static String obtenerNombreEstadoPorId(int estadoTID) {
         List<EstadoTripulante> estados = leerEstadosDesdeJson();
         for (EstadoTripulante e : estados) {
@@ -170,8 +162,6 @@ public class Tripulante {
         return null;
     }
 
-    // --- Map helpers ---
-
     static Map<String, Integer> obtenerEstadosComoMapa() {
         Map<String, Integer> mapa = new HashMap<>();
         List<EstadoTripulante> estados = leerEstadosDesdeJson();
@@ -180,8 +170,6 @@ public class Tripulante {
         }
         return mapa;
     }
-
-    // --- CRUD ---
 
     static ResultSet listarEstados() {
         List<EstadoTripulante> estados = leerEstadosDesdeJson();

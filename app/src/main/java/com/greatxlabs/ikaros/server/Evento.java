@@ -55,15 +55,11 @@ public class Evento {
         this.estadoEID = 2;
     }
 
-    // --- Inner classes ---
-
     static class EstadoEvento {
         public int EstadoEID;
         public String Estado;
         public EstadoEvento() {}
     }
-
-    // --- Infrastructure ---
 
     private static final ObjectMapper mapper = new ObjectMapper();
     static final SemaforoRW eventoLock = new SemaforoRW();
@@ -72,8 +68,6 @@ public class Evento {
         if (ts == null) return null;
         return ts.toLocalDateTime().toString();
     }
-
-    // --- JSON I/O ---
 
     static List<Evento> leerDesdeJson() {
         try {
@@ -110,8 +104,6 @@ public class Evento {
         }
     }
 
-    // --- Lookups ---
-
     static String obtenerNombreEstadoPorId(int estadoEID) {
         List<EstadoEvento> estados = leerEstadosDesdeJson();
         for (EstadoEvento e : estados) {
@@ -119,8 +111,6 @@ public class Evento {
         }
         return null;
     }
-
-    // --- Map helpers ---
 
     static Map<String, Integer> obtenerEstadosComoMapa() {
         Map<String, Integer> mapa = new HashMap<>();
@@ -130,8 +120,6 @@ public class Evento {
         }
         return mapa;
     }
-
-    // --- CRUD ---
 
     static ResultSet listarEstados() {
         List<EstadoEvento> estados = leerEstadosDesdeJson();
