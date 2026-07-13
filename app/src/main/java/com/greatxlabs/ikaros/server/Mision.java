@@ -66,8 +66,6 @@ public class Mision {
         return estadoMID == 4 || estadoMID == 5;
     }
 
-    // --- Inner classes ---
-
     static class EstadoMision {
         public int EstadoMID;
         public String Estado;
@@ -81,8 +79,6 @@ public class Mision {
         public GrupoMision() {}
     }
 
-    // --- Infrastructure ---
-
     private static final ObjectMapper mapper = new ObjectMapper();
     static final SemaforoRW misionLock = new SemaforoRW();
 
@@ -90,8 +86,6 @@ public class Mision {
         if (ts == null) return null;
         return ts.toLocalDateTime().toString();
     }
-
-    // --- JSON I/O ---
 
     static List<Mision> leerDesdeJson() {
         try {
@@ -153,8 +147,6 @@ public class Mision {
         Files.move(tmp, ruta, StandardCopyOption.REPLACE_EXISTING);
     }
 
-    // --- Lookups ---
-
     static String obtenerNombreEstadoPorId(int estadoMID) {
         List<EstadoMision> estados = leerEstadosDesdeJson();
         for (EstadoMision e : estados) {
@@ -171,8 +163,6 @@ public class Mision {
         return null;
     }
 
-    // --- Map helpers ---
-
     static Map<String, Integer> obtenerEstadosComoMapa() {
         Map<String, Integer> mapa = new HashMap<>();
         List<EstadoMision> estados = leerEstadosDesdeJson();
@@ -181,8 +171,6 @@ public class Mision {
         }
         return mapa;
     }
-
-    // --- CRUD ---
 
     static ResultSet listarEstados() throws SQLException {
         List<EstadoMision> estados = leerEstadosDesdeJson();
@@ -364,8 +352,6 @@ public class Mision {
         }
         return false;
     }
-
-    // --- Group/Assignment operations ---
 
     static void asignarTripulante(int usuarioIDLogueado, int tripID, int misID, Timestamp fecha, AccesoDatos ad) {
         try {

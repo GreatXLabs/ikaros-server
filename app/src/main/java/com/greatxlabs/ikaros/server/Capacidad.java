@@ -40,20 +40,14 @@ public class Capacidad {
     public String getFechaCapacidades() { return fechaCapacidades; }
     public void setFechaCapacidades(String fechaCapacidades) { this.fechaCapacidades = fechaCapacidades; }
 
-    // --- Inner classes ---
-
     static class AptitudJson {
         public int AptitudID;
         public String Aptitud;
         public AptitudJson() {}
     }
 
-    // --- Infrastructure ---
-
     private static final ObjectMapper mapper = new ObjectMapper();
     static final SemaforoRW capacidadLock = new SemaforoRW();
-
-    // --- JSON I/O ---
 
     static List<Capacidad> leerDesdeJson() {
         try {
@@ -90,8 +84,6 @@ public class Capacidad {
         }
     }
 
-    // --- Lookups ---
-
     static String obtenerNombreAptitudPorId(int aptitudID) {
         List<AptitudJson> aptitudes = leerAptitudesDesdeJson();
         for (AptitudJson a : aptitudes) {
@@ -99,8 +91,6 @@ public class Capacidad {
         }
         return null;
     }
-
-    // --- Map helpers ---
 
     static Map<String, Integer> obtenerAptitudesComoMapa() {
         Map<String, Integer> mapa = new HashMap<>();
@@ -110,8 +100,6 @@ public class Capacidad {
         }
         return mapa;
     }
-
-    // --- CRUD ---
 
     static ResultSet consultar(int tripulanteID) {
         List<Capacidad> capacidades = leerDesdeJson();
