@@ -25,6 +25,7 @@ public class SemaforoRW {
         }
         mutex.release();
         turno.release();
+        Thread.sleep(2500);
     }
 
     public void terminarLectura() throws InterruptedException {
@@ -38,7 +39,13 @@ public class SemaforoRW {
 
     public void iniciarEscritura() throws InterruptedException {
         turno.acquire();
-        recurso.acquire();
+        try {
+            recurso.acquire();
+        } catch (InterruptedException e) {
+            turno.release();
+            throw e;
+        }
+        Thread.sleep(2500);
     }
 
     public void terminarEscritura() {

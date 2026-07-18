@@ -24,6 +24,13 @@ public class LogSistema {
             Thread.currentThread().interrupt();
             return;
         }
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            mutex.release();
+            return;
+        }
         try (PrintWriter writer = new PrintWriter(new FileWriter(archivoLog, true))) {
             writer.println("[" + LocalDateTime.now().format(FORMATO) + "] " + mensaje);
         } catch (IOException e) {
